@@ -1,0 +1,20 @@
+---
+title: "Sesión 1"
+output:
+  html_document:
+    df_print: paged
+---
+
+2018/08/15
+
+```{r include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+install.packages("car")
+library(car)
+library(R2jags)
+data(Angell)
+```
+
