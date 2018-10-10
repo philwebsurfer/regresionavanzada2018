@@ -1,0 +1,108 @@
+---
+title: "Sesión 2 - 2018/08/27"
+output:
+  html_document:
+    df_print: paged
+---
+
+_Jorge III Altamirano Astorga_
+
+Sesión 2: 2018/08/27
+
+# {.tabset}
+
+## Ejercicio 1
+
+Poco informativa, porque la línea que pareciera plana, es plana en ese rango de datos, es decir, no aporta mucho, puesto que no se parece.
+```{r}
+#-Proceso de aprendizaje normal-normal-
+xbar<-40.9533
+sig2<-4
+n<-3
+
+th0<-39
+sig20<-219.47
+
+y<-seq(35,45,length.out=200)
+f0y<-dnorm(y,th0,sqrt(sig20))
+liky<-dnorm(y,xbar,sqrt(sig2/n))
+sig21<-1/(n/sig2+1/sig20)
+th1<-sig21*(n/sig2*xbar+th0/sig20)
+f1y<-dnorm(y,th1,sqrt(sig21))
+ymax<-max(f0y,liky,f1y)
+plot(y,f0y,ylim=c(0,ymax),type="l")
+lines(y,liky,lty=2,col=2)
+lines(y,f1y,lty=3,col=3)
+```
+
+
+Para hacer más informativa la inicial:
+```{r}
+#-Proceso de aprendizaje normal-normal-
+xbar<-40.9533
+sig2<-4
+n<-3
+
+th0<-39
+sig20<- 2.19
+
+y<-seq(35,45,length.out=200)
+f0y<-dnorm(y,th0,sqrt(sig20))
+liky<-dnorm(y,xbar,sqrt(sig2/n))
+sig21<-1/(n/sig2+1/sig20)
+th1<-sig21*(n/sig2*xbar+th0/sig20)
+f1y<-dnorm(y,th1,sqrt(sig21))
+ymax<-max(f0y,liky,f1y)
+plot(y,f0y,ylim=c(0,ymax),type="l")
+lines(y,liky,lty=2,col=2)
+lines(y,f1y,lty=3,col=3)
+```
+
+Nota:
+Negra: inicial
+Roja: verosimilitud
+Verde: final
+
+Cuando no sabemos la inicial, es una inicial no informativa, la cual representa nuestra ignorancia. Esta ignorancia no es negativo, simplemente, no sabemos cómo se comporta.
+
+No se puede estar jugando con la varianza, simplemente, es mejor desconocerla.
+
+## Ejercicio 2
+
+```{r}
+#-Proceso de aprendizaje bernoulli-beta-
+
+#Simulacion de datos Bernoulli
+theta0 <- 0.6
+n <- 100
+x<-rbinom(n,1,theta0)
+hist(x,freq=FALSE)
+
+#Distribucion inicial para theta
+a <- 1
+b <- 1
+theta<-seq(0,1,,100)
+plot(theta,dbeta(theta,a,b),type="l")
+
+#Distribucion final
+a1 <- a + sum(x)
+b1 <- b + n - sum(x)
+# plot(theta,dbeta(theta,a1,b1),type="l")
+plot(theta,dbeta(theta,a+sum(x),b+n-sum(x)),type="l") # tomado del formulario
+```
+
+```{r}
+#Ambas
+theta<-seq(0,1,,100)
+ymax <- max(dbeta(theta,a,b),dbeta(theta,a1,b1))
+plot(theta,dbeta(theta,a,b),type="l",ylim=c(0,ymax))
+lines(theta,dbeta(theta,a1,b1),col=2)
+abline(v=theta0,col=4)
+```
+
+## Criterio de Referencia
+
+```{r}
+
+```
+

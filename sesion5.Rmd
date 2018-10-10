@@ -1,0 +1,219 @@
+---
+title: "Sesion 2018/09/12"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r, include=FALSE}
+# install.packages("R2OpenBUGS")
+# install.packages("R2jags")
+library(R2OpenBUGS)
+library(R2jags)
+```
+
+```{r}
+n<-10
+credito<-c(rep(1,n/2),rep(0,n/2))
+data<-list("n"=n,"x"=credito)
+print("Credito:")
+credito
+data
+```
+
+# {.tabset}
+
+## Inciso a
+
+```{r}
+inits<-function(){list(theta=0.5,x1=rep(1,2))}
+parameters<-c("theta","x1")
+ej1.bugs<-bugs(data,inits,parameters,model.file="Ej1a.txt",
+              n.iter=5000,n.chains=1,n.burnin=500)
+ej1.jags<-jags(data,inits,parameters,model.file="Ej1a.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=1)
+```
+
+
+```{r}
+#OpenBUGS
+out.bugs<-ej1.bugs$sims.list
+
+#JAGS
+out.jags<-ej1.jags$BUGSoutput$sims.list
+
+z<-out.bugs$theta
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+par(mfrow=c(1,1))
+hist(z,freq=F)
+```
+
+```{r}
+par(mfrow=c(1,1), ask=F)
+hist(z,freq=F)
+zz <- seq(0.4, 0.7, 100)
+lines(zz,dbeta(zz,139.4,109.6), col=2)
+```
+
+```{r}
+print(ej1.bugs$summary)
+```
+
+```{r}
+z<-out.jags$theta
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+
+```{r}
+par(mfrow=c(1,1), ask=F)
+hist(z,freq=F)
+zz <- seq(0.4, 0.7, 100)
+lines(zz,dbeta(zz,139.4,109.6), col=2)
+```
+
+```{r}
+print(ej1.jags$BUGSoutput$summary)
+```
+
+### Inicializaciones incorrectas
+
+
+```{r}
+data
+parameters
+```
+
+
+```{r}
+inits<-function(){list(theta=0.001,x1=rep(0,2))}
+ej1.bugs<-bugs(data,inits,parameters,model.file="Ej1a.txt",
+              n.iter=5000,n.chains=2,n.burnin=500)
+out.bugs<-ej1.bugs$sims.list
+ej1.jags<-jags(data,inits,parameters,model.file="Ej1a.txt",
+              n.iter=5000,n.chains=2,n.burnin=500,n.thin=1)
+out.jags<-ej1.jags$BUGSoutput$sims.list
+z.jags<-out.jags$theta
+z.bugs<-out.bugs$theta
+head(z.jags)
+head(z.bugs)
+```
+
+```{r}
+z<-out.jags$theta
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out.bugs$theta
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+## Moneda / Mezclas
+
+```{r}
+#---------------------#
+#Mezcla de betas
+w<-seq(0.01,0.99,100)
+pp<-0.3
+fw<-pp*dbeta(w,10,10)+(1-pp)*dbeta(w,5,0.05)
+par(mfrow=c(1,1))
+plot(w,fw,type="l")
+```
+
+```{r}
+credito<-c(rep(1,n*0.9),rep(0,n*0.1))
+inits<-function(){list(eta=1)}
+parameters<-c("eta")
+ej1.jags<-jags(data,inits,parameters,model.file="Ej1d.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=1)
+out.jags<-ej1.jags$BUGSoutput$sims.list
+z.jags<-out.jags$eta
+head(z.jags)
+# out<-ej1.jags$BUGSoutput$sims.list
+# z<-out$theta
+# print(out$theta)
+# head(out)
+```
+
+## 2018/09/17
+
+```{r}
+inits<-function(){list(lambda=0)}
+ej1.bugs<-bugs(data,inits,parameters,model.file="Ej1d.txt",
+              n.iter=5000,n.chains=2,n.burnin=500,n.thin=1)
+ej1.jags<-jags(data,inits,parameters,model.file="Ej1d.txt",
+              n.iter=5000,n.chains=2,n.burnin=500,n.thin=1)
+out<-ej1.jags$BUGSoutput$sims.list
+z<-out$eta
+head(z)
+```
+
+```{r}
+ej1.jags$BUGSoutput$DIC
+```
+
+```{r}
+ej1.bugs$DIC
+```
+
+```{r}
+ej1.bugs$summary
+```
+
+```{r}
+ej1.jags$BUGSoutput$summary
+```
+
+```{r}
+ej1.jags$model
+```
+
+```{r}
+ej1.bugs$model.file
+```
+
+### Inciso c
+
+```{r}
+inits<-function(){list(theta=0.5,eta=1)}
+# ej1.bugs<-bugs(data,inits,parameters,model.file="Ej1c.txt",
+#               n.iter=5000,n.chains=2,n.burnin=500,debug=T)
+ej1.jags<-jags(data,inits,parameters,model.file="Ej1c.txt",
+              n.iter=5000,n.chains=2,n.burnin=500,n.thin=1)
+out<-ej1.jags$BUGSoutput$sims.list
+summary(out)
+z<-out$theta
+head(z)
+```
+```{r}
+ej1.jags$DIC
+```
+
+```{r}
+ej1.bugs$DIC
+```
+
+```{r}
+ej1.bugs$summary
+```
+

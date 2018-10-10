@@ -1,0 +1,108 @@
+---
+title: "Sesión 2018/09/03"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(tidyverse)
+```
+
+# {.tabset}
+
+## 30 Ejecuciones
+
+```{r}
+theta0 <- 0.6
+n <- 30
+x<-rbinom(n,1,theta0)
+hist(x,freq=FALSE)
+
+#Distribucion inicial para theta
+a <- 1
+b <- 1
+theta<-seq(0,1,,100)
+plot(theta,dbeta(theta,a,b),type="l")
+
+#Distribucion final
+a1 <- a + sum(x)
+b1 <- b + n - sum(x)
+plot(theta,dbeta(theta,a1,b1),type="l")
+
+#Ambas
+theta<-seq(0,1,,100)
+ymax <- max(dbeta(theta,a,b),dbeta(theta,a1,b1))
+plot(theta,dbeta(theta,a,b),type="l",ylim=c(0,ymax))
+lines(theta,dbeta(theta,a1,b1),col=2)
+abline(v=theta0,col=4)
+
+#Aproximacion normal asintotica
+mu <- (a1-1)/(a1+b1-2)
+sig2 <- (a1-1)*(b1-1)/(a1+b1-2)^3
+lines(theta,dnorm(theta,mu,sqrt(sig2)),col=3)
+```
+
+## 100 Ejecuciones
+
+```{r}
+theta0 <- 0.6
+n <- 100
+x<-rbinom(n,1,theta0)
+hist(x,freq=FALSE)
+
+#Distribucion inicial para theta
+a <- 1
+b <- 1
+theta<-seq(0,1,,100)
+plot(theta,dbeta(theta,a,b),type="l")
+
+#Distribucion final
+a1 <- a + sum(x)
+b1 <- b + n - sum(x)
+plot(theta,dbeta(theta,a1,b1),type="l")
+
+#Ambas
+theta<-seq(0,1,,100)
+ymax <- max(dbeta(theta,a,b),dbeta(theta,a1,b1))
+plot(theta,dbeta(theta,a,b),type="l",ylim=c(0,ymax))
+lines(theta,dbeta(theta,a1,b1),col=2)
+abline(v=theta0,col=4)
+
+#Aproximacion normal asintotica
+mu <- (a1-1)/(a1+b1-2)
+sig2 <- (a1-1)*(b1-1)/(a1+b1-2)^3
+lines(theta,dnorm(theta,mu,sqrt(sig2)),col=3)
+```
+
+## 500 Ejecuciones
+
+```{r}
+theta0 <- 0.6
+n <- 500
+x<-rbinom(n,1,theta0)
+hist(x,freq=FALSE)
+
+#Distribucion inicial para theta
+a <- 1
+b <- 1
+theta<-seq(0,1,,100)
+plot(theta,dbeta(theta,a,b),type="l")
+
+#Distribucion final
+a1 <- a + sum(x)
+b1 <- b + n - sum(x)
+plot(theta,dbeta(theta,a1,b1),type="l")
+
+#Ambas
+theta<-seq(0,1,,100)
+ymax <- max(dbeta(theta,a,b),dbeta(theta,a1,b1))
+plot(theta,dbeta(theta,a,b),type="l",ylim=c(0,ymax))
+lines(theta,dbeta(theta,a1,b1),col=2)
+abline(v=theta0,col=4)
+
+#Aproximacion normal asintotica
+mu <- (a1-1)/(a1+b1-2)
+sig2 <- (a1-1)*(b1-1)/(a1+b1-2)^3
+lines(theta,dnorm(theta,mu,sqrt(sig2)),col=3)
+```

@@ -1,0 +1,277 @@
+---
+title: "Sesion 2018/09/17"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Ejercicio 2 {.tabset}
+
+```{r, include=FALSE}
+# install.packages("R2OpenBUGS")
+# install.packages("R2jags")
+library(R2OpenBUGS)
+library(R2jags)
+```
+
+### Inciso a 
+
+```{r}
+#-Reading data-
+utilidad<-c(212, 207, 210,
+196, 223, 193,
+196, 210, 202, 221)
+n<-length(utilidad)
+#-Defining data-
+data<-list("n"=n,"x"=utilidad)
+
+#-Defining inits-
+inits<-function(){list(mu=0,sig=1,x1=0)}
+
+#-Selecting parameters to monitor-
+parameters<-c("mu","sig","x1")
+
+#-Running code-
+#OpenBUGS
+ej2.bugs<-bugs(data,inits,parameters,model.file="Ej2a.txt",
+              n.iter=10000,n.chains=2,n.burnin=1000)
+#JAGS
+ej2.jags<-jags(data,inits,parameters,model.file="Ej2a.txt",
+              n.iter=10000,n.chains=2,n.burnin=1000,n.thin = 1)
+#-Monitoring chain-
+
+#Traza de la cadena
+# traceplot(ej2.jags)
+
+#Cadena
+
+#OpenBUGS
+out.bugs<-ej2.bugs$sims.list
+
+#JAGS
+out.jags<- ej2.jags$BUGSoutput$sims.list
+
+```
+
+Jags
+
+```{r}
+z<-out.jags$x1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+Bugs
+
+```{r}
+z<-out.bugs$x1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+JAGS
+
+```{r}
+#Resumen (estimadores)
+#JAGS
+out.sum<-ej2.jags$BUGSoutput$summary
+
+print(out.sum)
+```
+
+Bugs
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej2.bugs$summary
+
+print(out.sum)
+```
+
+Jags 
+
+```{r}
+#DIC
+#JAGS
+out.dic<-ej2.jags$BUGSoutput$DIC
+
+print(out.dic)
+```
+
+Bugs
+
+```{r}
+#DIC
+#OpenBUGS
+out.dic<-ej2.bugs$DIC
+
+print(out.dic)
+```
+
+### Inciso B
+
+```{r}
+#-Defining inits-
+inits<-function(){list(mu=0,sig=1,x1=0)}
+
+#-Selecting parameters to monitor-
+parameters<-c("mu","sig","x1")
+
+#-Running code-
+#OpenBUGS
+ej2.bugs<-bugs(data,inits,parameters,model.file="Ej2b.txt",
+              n.iter=10000,n.chains=2,n.burnin=1000)
+#JAGS
+ej2.jags<-jags(data,inits,parameters,model.file="Ej2b.txt",
+              n.iter=10000,n.chains=2,n.burnin=1000,n.thin = 1)
+#-Monitoring chain-
+
+#Traza de la cadena
+# traceplot(ej2.jags)
+
+#Cadena
+
+#OpenBUGS
+out.bugs<-ej2.bugs$sims.list
+
+#JAGS
+out.jags<- ej2.jags$BUGSoutput$sims.list
+
+```
+
+Jags
+
+```{r}
+z<-out.jags$x1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+Bugs
+
+```{r}
+z<-out.bugs$x1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+JAGS
+
+```{r}
+#Resumen (estimadores)
+#JAGS
+out.sum<-ej2.jags$BUGSoutput$summary
+
+print(out.sum)
+```
+
+Bugs
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej2.bugs$summary
+
+print(out.sum)
+```
+
+Jags 
+
+```{r}
+#DIC
+#JAGS
+out.dic<-ej2.jags$BUGSoutput$DIC
+
+print(out.dic)
+```
+
+Bugs
+
+```{r}
+#DIC
+#OpenBUGS
+out.dic<-ej2.bugs$DIC
+
+print(out.dic)
+```
+
+## Jags Tutorial
+
+<https://faculty.washington.edu/jmiyamot/p548/karreth%20jags%20&%20r2jags%20tutorial.pdf>
+
+```{r}
+library(car)
+data(Angell)
+```
+
+```{r}
+angell.1 <- Angell[, -4]
+angell.1
+```
+
+```{r}
+moral <- angell.1$moral
+hetero <- angell.1$mobility
+mobility <- angell.1$mobility
+N <- length(mobility)
+data <- list("moral", "hetero", "mobility", "N")
+params <- c("alpha", "beta1", "beta2")
+inits <- function(){ list(alpha=c(20), beta1=c(-0.1), beta2=c(-0.02))}
+angel.jags <- jags(data, inits, params, n.chains=2, n.iter=9000, n.burnin=1000, model.file="moral.jags")
+```
+
+
+```{r}
+out.jags <- angel.jags$BUGSoutput$sims.list
+z<-out.jags$alpha
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+out.jags <- angel.jags$BUGSoutput$sims.list
+z<-out.jags$beta1
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+out.jags <- angel.jags$BUGSoutput$sims.list
+z<-out.jags$beta2
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+
+```{r}
+out.jags <- angel.jags$BUGSoutput$sims.list
+z<-out.jags$deviance
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+

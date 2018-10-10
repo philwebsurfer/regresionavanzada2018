@@ -1,0 +1,405 @@
+---
+title: "Sesion 8: 24/09/2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+```
+
+
+$$
+f(y|x) = N(y|\alpha + \beta x, \tau)
+$$
+
+# {.tabset}
+
+Calificaciones Moody's vs Standard & Poors
+
+```{r}
+calif<-read.table("calificaciones.txt",header=TRUE)
+n<-nrow(calif)
+plot(calif$MO,calif$SP)
+```
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=calif$SP,"x"=calif$MO)
+
+#-Defining inits-
+# tiene 2 betas
+inits<-function(){list(beta=rep(0,2),tau=1,yf=rep(0,n))}
+#tiene 6 betas, por ajuste de polinomio
+# inits<-function(){list(beta=rep(0,6),tau=1,yf=rep(0,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf", "sig2")
+ej3.bugs<-bugs(data,inits,parameters,model.file="Ej3.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000)
+ej3.jags<-jags(data,inits,parameters,model.file="Ej3.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000,n.thin=10)
+
+```
+
+## OpenBUGS
+
+```{r}
+out<-ej3.bugs$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+prob<-function(x){
+  out<-min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+out.sum<-ej3.bugs$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.bugs$DIC
+print(out.dic)
+```
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```
+
+## Jags
+
+```{r}
+out<-ej3.jags$BUGSoutput$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+out.sum<-ej3.jags$BUGSoutput$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.jags$BUGSoutput$DIC
+print(out.dic)
+```
+
+### R2
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```
+
+# 3b: polinomial
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=calif$SP,"x"=calif$MO)
+
+#-Defining inits-
+# tiene 2 betas
+inits<-function(){list(beta=rep(0,5),tau=1,yf=rep(0,n))}
+#tiene 6 betas, por ajuste de polinomio
+# inits<-function(){list(beta=rep(0,6),tau=1,yf=rep(0,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf", "sig2")
+ej3.bugs<-bugs(data,inits,parameters,model.file="Ej3b.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000)
+ej3.jags<-jags(data,inits,parameters,model.file="Ej3b.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000,n.thin=10)
+
+```
+
+## OpenBUGS
+
+```{r}
+out<-ej3.bugs$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+prob<-function(x){
+  out<-min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+out.sum<-ej3.bugs$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.bugs$DIC
+print(out.dic)
+```
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```
+
+## Jags
+
+```{r}
+out<-ej3.jags$BUGSoutput$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+out.sum<-ej3.jags$BUGSoutput$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.jags$BUGSoutput$DIC
+print(out.dic)
+```
+
+### R2
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```
+
+# 3c: Normal
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=calif$SP,"x"=calif$MO)
+
+#-Defining inits-
+# tiene 2 betas
+inits<-function(){list(beta=rep(0,2),tau=1,yf=rep(0,n))}
+#tiene 6 betas, por ajuste de polinomio
+# inits<-function(){list(beta=rep(0,6),tau=1,yf=rep(0,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf", "sig2")
+ej3.bugs<-bugs(data,inits,parameters,model.file="Ej3c.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000)
+ej3.jags<-jags(data,inits,parameters,model.file="Ej3c.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000,n.thin=10)
+
+```
+
+## OpenBUGS
+
+```{r}
+out<-ej3.bugs$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+prob<-function(x){
+  out<-min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+out.sum<-ej3.bugs$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.bugs$DIC
+print(out.dic)
+```
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```
+
+## Jags
+
+```{r}
+out<-ej3.jags$BUGSoutput$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+z<-out$beta
+par(mfrow=c(1,1))
+plot(z)
+
+z<-out$beta
+pairs(z)
+```
+
+```{r}
+out.sum<-ej3.jags$BUGSoutput$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej3.jags$BUGSoutput$DIC
+print(out.dic)
+```
+
+### R2
+
+```{r}
+#Predictions
+out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+or<-order(calif$MO)
+ymin<-min(calif$SP,out.yf[,c(1,3,7)])
+ymax<-max(calif$SP,out.yf[,c(1,3,7)])
+par(mfrow=c(1,1))
+plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
+lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
+lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
+lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
+
+plot(calif$SP,out.yf[,1])
+R2<-(cor(calif$SP,out.yf[,1]))^2
+print(R2)
+```

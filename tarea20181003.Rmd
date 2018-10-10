@@ -1,0 +1,140 @@
+---
+title: "Tarea 03/10/2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+_Jorge III Altamirano Astorga - 175904_
+
+```{r include=FALSE}
+library(tidyverse)
+library(R2jags)
+```
+
+
+## Salarios
+
+```{r}
+prob<-function(x){
+  out<-min(length(x[x>0])/length(x),length(x[x<0])/length(x))
+  out
+}
+salarios<-read.table("salarios.txt",header=TRUE)
+n<-nrow(salarios)
+pairs(salarios)
+```
+
+```{r}
+par(mfrow=c(2,2))
+hist(salarios$Y)
+hist(salarios$X1)
+hist(salarios$X2)
+hist(salarios$X3)
+par(mfrow=c(1,1))
+```
+
+```{r}
+#-Defining data-
+m <- 3
+data<-list("n"=n,"m"=m,
+           "y"=salarios$Y,
+           "x"=structure(.Data=c(salarios$X1, salarios$X2, salarios$X3),
+                         .Dim=c(n,3)),
+           "xf"=structure(.Data=c(5.4,6.2,6.4, 17.0,12.0,21.0, 6.0,5.8,6.1),
+                          .Dim=c(3,3))
+           )
+
+#-Defining inits-
+# tiene 2 betas
+inits<-function(){list(beta=rep(0,3),tau=1,yf1=rep(0,n),yf2=rep(0,m))}
+#tiene 6 betas, por ajuste de polinomio
+# inits<-function(){list(beta=rep(0,6),tau=1,yf=rep(0,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","tau","yf1", "yf2", "sig2")
+parameters<-c("beta","tau", "yf2", "sig2")
+# ej4.bugs<-bugs(data,inits,parameters,model.file="tarea20181003.txt",
+# n.iter=100000,n.chains=2,n.burnin=10000)
+ej4.jags<-jags(data,inits,parameters,model.file="tarea20181003.txt",
+              n.iter=100000,n.chains=2,n.burnin=10000,n.thin=10)
+```
+
+```{r}
+out<-ej4.jags$BUGSoutput$sims.list
+z<-out$beta[,2]
+par(mfrow=c(2,2))
+plot(z,type="l")
+plot(cumsum(z)/(1:length(z)),type="l")
+hist(z,freq=FALSE)
+acf(z)
+```
+
+```{r}
+###### Predicciones Y2
+ej4.jags$BUGSoutput$sims.list$yf2  %>% pairs
+```
+
+```{r}
+ej4.jags$BUGSoutput$sims.list$yf2 %>% summary
+```
+
+```{r}
+#### Beta's
+z<-out$beta
+pairs(z)
+```
+```{r}
+out.sum<-ej4.jags$BUGSoutput$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej4.jags$BUGSoutput$DIC
+print(out.dic)
+```
+
+### Predicciones
+
+```{r}
+### Tomado de https://stackoverflow.com/a/36066450/7323086
+# posterior_means <- 
+posterior_means <- out.sum.t[,1]
+str(posterior_means)
+```
+
+```{r}
+#### Predicciones
+posterior_means %*% data$xf 
+```
+
+```{r}
+data$xf %*% posterior_means
+```
+
+```{r}
+data$xf
+```
+
+
+### R2
+
+```{r}
+#Predictions
+# out.yf<-out.sum[grep("yf2",rownames(out.sum)),]
+# or<-order(salarios$MO)
+# ymin<-min(salarios$SP,out.yf[,c(1,3,7)])
+# ymax<-max(salarios$SP,out.yf[,c(1,3,7)])
+# par(mfrow=c(1,1))
+# plot(salarios$MO,salarios$SP,ylim=c(ymin,ymax))
+# lines(salarios$MO[or],out.yf[or,1],lwd=2,col=2)
+# lines(salarios$MO[or],out.yf[or,3],lty=2,col=2)
+# lines(salarios$MO[or],out.yf[or,7],lty=2,col=2)
+# 
+# plot(salarios$SP,out.yf[,1])
+# R2<-(cor(salarios$SP,out.yf[,1]))^2
+# print(R2)
+```
+

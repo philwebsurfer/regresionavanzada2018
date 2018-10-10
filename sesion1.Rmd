@@ -12,9 +12,86 @@ library(tidyverse)
 ```
 
 ```{r}
-install.packages("car")
 library(car)
 library(R2jags)
 data(Angell)
+```
+
+## Carga de datos
+
+```{r}
+angell.1 <- Angell[, -4]
+angell.1
+```
+
+## Carga las variables JAGS
+
+```{r}
+moral <- angell.1$moral
+hetero <- angell.1$hetero
+mobility <- angell.1$mobility
+N <- length(angell.1)
+```
+
+## Variables iniciales
+
+```{r}
+angell.data <- list("moral", "hetero", "mobility", "N")
+angell.params <- c("alpha", "beta1", "beta2")
+angell.inits <- function() {
+  list(alpha=c(20), beta1 = c(-0.1), beta2 = c(-0.02))
+}
+```
+
+## JAGS
+
+```{r}
+angellfit <- jags(data = angell.data,
+                  inits = angell.inits,
+                  parameters.to.save = angell.params,
+                  model.file = "sesion1_1.jags",
+                  n.chains = 2,
+                  n.iter = 9000,
+                  n.burnin = 1000)
+```
+
+## Actualización
+
+```{r}
+angellfit.update <- update(angellfit, n.iter = 1000)
+angellfit.update <- autojags(angellfit)
+```
+
+## Resultados 
+
+## angellfit
+
+```{r}
+print(angellfit)
+```
+
+## angellfit.update
+
+```{r}
+print(angellfit.update)
+```
+
+## Gráficas
+
+```{r}
+plot(angellfit)
+```
+
+
+```{r}
+plot(angellfit.update)
+```
+
+```{r}
+traceplot(angellfit)
+```
+
+```{r}
+traceplot(angellfit.update)
 ```
 

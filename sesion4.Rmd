@@ -1,0 +1,24 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(tidyverse)
+library(bayesm)
+library(R2OpenBUGS)
+library(R2jags)
+```
+
+```{r include=FALSE}
+# install.packages("bayesm")
+# install.packages("R2OpenBUGS")
+# install.packages("R2jags")
+```
+
+```{r}
+out<-rbiNormGibbs(rho=0.95)
+out<-rbiNormGibbs(rho=-0.5)
+```
