@@ -10,6 +10,12 @@ library(R2jags)
 library(R2OpenBUGS)
 ```
 
+# Ejemplo 5c {.tabset}
+
+## Inicialización
+
+### Datos globales para modelos
+
 ```{r}
 #--- Ejemplo 5 ---
 #-Reading data-
@@ -30,109 +36,256 @@ parameters<-c("beta","lambda","yf1","yf2")
 parameters<-c("beta","p","yf1","yf2")
 ```
 
+### Funciones de graficación
+
 ```{r}
-# ej5a.bugs<-bugs(data,inits,parameters,model.file="Ej5a.txt",
-#               n.iter=50000,n.chains=2,n.burnin=5000)
-# ej5aa.bugs<-bugs(data,inits,parameters,model.file="Ej5aa.txt",
-#                n.iter=50000,n.chains=2,n.burnin=5000)
-# ej5b.bugs<-bugs(data,inits,parameters,model.file="Ej5b.txt",
-#                n.iter=50000,n.chains=2,n.burnin=5000)
-ej5c.bugs<-bugs(data,inits,parameters,model.file="Ej5c.txt",
+source("util.R")
+graficarY1 <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  or<-order(mortality$x)
+  ymin<-min(mortality$y,out.yf[,c(1,3,7)])
+  ymax<-max(mortality$y,out.yf[,c(1,3,7)])
+
+  par(mfrow=c(1,1))
+  plot(mortality$x,mortality$y,ylim=c(ymin,ymax))
+  #Modelo 4
+  lines(mortality$x[or],out.yf[or,1],lwd=2,col=5)
+  lines(mortality$x[or],out.yf[or,3],lty=2,col=5)
+  lines(mortality$x[or],out.yf[or,7],lty=2,col=5)
+  plot(mortality$y,out.yf[,1])
+  abline(a=0,b=1)
+  print(paste("Correlación:" ,cor(mortality$y,out.yf[,1])))
+}
+graficarTasa <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.tasa<-out.sum[grep("lambda",rownames(out.sum)),]
+  out.tasa<-out.sum[grep("p",rownames(out.sum)),]
+  or<-order(mortality$x)
+  ymin<-min(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  ymax<-max(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  plot(mortality$x,mortality$y/mortality$n,ylim=c(ymin,ymax))
+  lines(mortality$x[or],out.tasa[or,1],lwd=2,col=4)
+  lines(mortality$x[or],out.tasa[or,3],lty=2,col=4)
+  lines(mortality$x[or],out.tasa[or,7],lty=2,col=4)
+}
+```
+
+
+## Logit {.tabset}
+
+
+```{r}
+ej5c.bugs<-bugs(data,inits,parameters,model.file="Ej5c-logit.txt",
                n.iter=50000,n.chains=2,n.burnin=5000)
-# ej5d.bugs<-bugs(data,inits,parameters,model.file="Ej5d.txt",
-#                n.iter=50000,n.chains=2,n.burnin=5000)
-#JAGS
-# ej5a.jags<-jags(data,inits,parameters,model.file="Ej5a.txt",
-#               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
-# ej5b.jags<-jags(data,inits,parameters,model.file="Ej5b.txt",
-#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
-ej5c.jags<-jags(data,inits,parameters,model.file="Ej5c.txt",
+ej5c.jags<-jags(data,inits,parameters,model.file="Ej5c-logit.txt",
                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
 ```
 
-## OpenBUGS
+### OpenBUGS
 
 ```{r}
-out<-ej5c.bugs$sims.list
-z<-out$beta[,2]
-par(mfrow=c(2,2))
-plot(z,type="l")
-plot(cumsum(z)/(1:length(z)),type="l")
-hist(z,freq=FALSE)
-acf(z)
+exploracionMCMC(ej5c.bugs)
 ```
 
 ```{r}
-z<-out$beta
-par(mfrow=c(1,1))
-plot(z)
-
-z<-out$beta
-pairs(z)
+betasMCMC(ej5c.bugs)
 ```
 
 ```{r}
-prob<-function(x){
-  out<-min(length(x[x>0])/length(x),length(x[x<0])/length(x))
-  out
-}
-out.sum<-ej5c.bugs$summary
-out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
-out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
-dimnames(out.sum.t)[[2]][4]<-"prob"
-print(out.sum.t)
-
-#DIC
-out.dic<-ej5c.bugs$DIC
-print(out.dic)
+dicMCMC(ej5c.bugs)
 ```
 
 ```{r}
-# #Predictions
-# out.yf<-out.sum[grep("yf",rownames(out.sum)),]
-# or<-order(calif$MO)
-# ymin<-min(calif$SP,out.yf[,c(1,3,7)])
-# ymax<-max(calif$SP,out.yf[,c(1,3,7)])
-# par(mfrow=c(1,1))
-# plot(calif$MO,calif$SP,ylim=c(ymin,ymax))
-# lines(calif$MO[or],out.yf[or,1],lwd=2,col=2)
-# lines(calif$MO[or],out.yf[or,3],lty=2,col=2)
-# lines(calif$MO[or],out.yf[or,7],lty=2,col=2)
-# 
-# plot(calif$SP,out.yf[,1])
-# R2<-(cor(calif$SP,out.yf[,1]))^2
-# print(R2)
-```
-
-## Jags
-
-```{r}
-out<-ej5c.jags$BUGSoutput$sims.list
-z<-out$beta[,2]
-par(mfrow=c(2,2))
-plot(z,type="l")
-plot(cumsum(z)/(1:length(z)),type="l")
-hist(z,freq=FALSE)
-acf(z)
+graficarY1(ej5c.bugs)
 ```
 
 ```{r}
-z<-out$beta
-par(mfrow=c(1,1))
-plot(z)
+graficarTasa(ej5c.bugs)
+```
 
-z<-out$beta
-pairs(z)
+### Jags
+
+```{r}
+exploracionMCMC(ej5c.jags)
 ```
 
 ```{r}
-out.sum<-ej5c.jags$BUGSoutput$summary
-out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
-out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
-dimnames(out.sum.t)[[2]][4]<-"prob"
-print(out.sum.t)
+betasMCMC(ej5c.jags)
+dicMCMC(ej5c.jags)
+```
 
-#DIC
-out.dic<-ej5c.jags$BUGSoutput$DIC
-print(out.dic)
+```{r}
+graficarY1(ej5c.jags)
+```
+
+```{r}
+graficarTasa(ej5c.jags)
+```
+
+
+## Probit {.tabset}
+
+
+```{r}
+ej5c.bugs<-bugs(data,inits,parameters,model.file="Ej5c-probit.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5c.jags<-jags(data,inits,parameters,model.file="Ej5c-probit.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+### OpenBUGS
+
+```{r}
+exploracionMCMC(ej5c.bugs)
+```
+
+```{r}
+betasMCMC(ej5c.bugs)
+```
+
+```{r}
+dicMCMC(ej5c.bugs)
+```
+
+```{r}
+graficarY1(ej5c.bugs)
+```
+
+```{r}
+graficarTasa(ej5c.bugs)
+```
+
+### Jags
+
+```{r}
+exploracionMCMC(ej5c.jags)
+```
+
+```{r}
+betasMCMC(ej5c.jags)
+```
+
+```{r}
+dicMCMC(ej5c.jags)
+```
+
+```{r}
+graficarY1(ej5c.jags)
+```
+
+```{r}
+graficarTasa(ej5c.jags)
+```
+
+## C Log Log {.tabset}
+
+
+```{r}
+ej5c.bugs<-bugs(data,inits,parameters,model.file="Ej5c-cloglog.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5c.jags<-jags(data,inits,parameters,model.file="Ej5c-cloglog.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5c.bugs)
+print("Jags")
+exploracionMCMC(ej5c.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5c.bugs)
+```
+
+```{r}
+betasMCMC(ej5c.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5c.bugs)
+```
+
+```{r}
+dicMCMC(ej5c.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5c.bugs)
+```
+
+```{r}
+graficarY1(ej5c.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+graficarTasa(ej5c.bugs)
+```
+
+```{r}
+graficarTasa(ej5c.jags)
+```
+
+
+## Log Log {.tabset}
+
+
+```{r}
+ej5c.bugs<-bugs(data,inits,parameters,model.file="Ej5c-loglog.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5c.jags<-jags(data,inits,parameters,model.file="Ej5c-loglog.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5c.bugs)
+print("Jags")
+exploracionMCMC(ej5c.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5c.bugs)
+betasMCMC(ej5c.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5c.bugs)
+
+dicMCMC(ej5c.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5c.bugs)
+graficarY1(ej5c.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+graficarTasa(ej5c.bugs)
+graficarTasa(ej5c.jags)
 ```
