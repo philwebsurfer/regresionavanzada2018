@@ -1,0 +1,274 @@
+---
+title: "Sesión 2018/10/15"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+```
+
+# Ejemplo 5a {.tabset}
+
+## Inicialización
+
+### Datos globales para modelos
+
+```{r}
+#--- Ejemplo 5 ---
+#-Reading data-
+mortality<-read.table("mortality.txt",header=TRUE)
+n<-nrow(mortality)
+plot(mortality)
+plot(mortality$x,mortality$y/mortality$n)
+m<-1
+nef<-c(100)
+xf<-c(200)
+#-Defining data-
+data<-list("n"=n,"ne"=mortality$n,"y"=mortality$y,"x"=mortality$x,"m"=m,"nef"=nef,"xf"=xf)
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n),yf2=1)}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","lambda","yf1","yf2")
+# parameters<-c("beta","p","yf1","yf2")
+```
+
+### Funciones de graficación
+
+```{r}
+source("util.R")
+graficarY1 <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  or<-order(mortality$x)
+  ymin<-min(mortality$y,out.yf[,c(1,3,7)])
+  ymax<-max(mortality$y,out.yf[,c(1,3,7)])
+
+  par(mfrow=c(1,1))
+  plot(mortality$x,mortality$y,ylim=c(ymin,ymax))
+  #Modelo 4
+  lines(mortality$x[or],out.yf[or,1],lwd=2,col=5)
+  lines(mortality$x[or],out.yf[or,3],lty=2,col=5)
+  lines(mortality$x[or],out.yf[or,7],lty=2,col=5)
+  plot(mortality$y,out.yf[,1])
+  abline(a=0,b=1)
+  print(paste("Correlación:" ,cor(mortality$y,out.yf[,1])))
+}
+graficarTasa <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.tasa<-out.sum[grep("lambda",rownames(out.sum)),]
+  out.tasa<-out.sum[grep("p",rownames(out.sum)),]
+  or<-order(mortality$x)
+  ymin<-min(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  ymax<-max(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  plot(mortality$x,mortality$y/mortality$n,ylim=c(ymin,ymax))
+  lines(mortality$x[or],out.tasa[or,1],lwd=2,col=4)
+  lines(mortality$x[or],out.tasa[or,3],lty=2,col=4)
+  lines(mortality$x[or],out.tasa[or,7],lty=2,col=4)
+}
+```
+
+
+## Logit {.tabset}
+
+```{r}
+ej5a.bugs<-bugs(data,inits,parameters,model.file="Ej5a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5a.jags<-jags(data,inits,parameters,model.file="Ej5a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5a.bugs)
+print("Jags")
+exploracionMCMC(ej5a.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5a.bugs)
+betasMCMC(ej5a.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5a.bugs)
+
+dicMCMC(ej5a.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5a.bugs)
+graficarY1(ej5a.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+# graficarTasa(ej5a.bugs)
+# graficarTasa(ej5a.jags)
+```
+
+
+## Base 10 {.tabset}
+
+```{r}
+ej5a.bugs<-bugs(data,inits,parameters,model.file="Ej5aa.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5a.jags<-jags(data,inits,parameters,model.file="Ej5aa.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5a.bugs)
+print("Jags")
+exploracionMCMC(ej5a.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5a.bugs)
+betasMCMC(ej5a.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5a.bugs)
+
+dicMCMC(ej5a.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5a.bugs)
+graficarY1(ej5a.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+# graficarTasa(ej5a.bugs)
+# graficarTasa(ej5a.jags)
+```
+
+
+## Ejercicio 5b {.tabset}
+
+Inicialización
+
+```{r}
+parameters<-c("beta","lambda","yf1","yf2")
+```
+
+
+```{r}
+ej5b.bugs<-bugs(data,inits,parameters,model.file="Ej5b.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5b.jags<-jags(data,inits,parameters,model.file="Ej5b.jags",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5b.bugs)
+print("Jags")
+exploracionMCMC(ej5b.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5b.bugs)
+betasMCMC(ej5b.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5b.bugs)
+
+dicMCMC(ej5b.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5b.bugs)
+graficarY1(ej5b.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+# graficarTasa(ej5b.bugs)
+# graficarTasa(ej5b.jags)
+```
+
+## Ejemplo 5d {.tabset}
+
+```{r}
+# parameters<-c("beta","lambda","yf1","yf2")
+parameters<-c("beta","p","yf1","yf2")
+ej5d.bugs<-bugs(data,inits,parameters,model.file="Ej5d.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+ej5d.jags<-jags(data,inits,parameters,model.file="Ej5d.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej5d.bugs)
+print("Jags")
+exploracionMCMC(ej5d.jags)
+```
+
+### Betas
+
+
+```{r}
+betasMCMC(ej5d.bugs)
+betasMCMC(ej5d.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej5d.bugs)
+
+dicMCMC(ej5d.jags)
+```
+
+### Graficas Y1
+
+```{r}
+graficarY1(ej5d.bugs)
+graficarY1(ej5d.bugs)
+```
+
+### Graficas Tasa
+
+```{r}
+# graficarTasa(ej5d.bugs)
+# graficarTasa(ej5d.jags)
+```

@@ -1,0 +1,394 @@
+---
+title: "Sesión 2018/10/18"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+```
+
+# Ejemplo 6 {.tabset}
+
+## Inicialización
+
+### Datos globales para modelos
+
+```{r}
+#--- Ejemplo 6 ---
+#-Reading data-
+desastres<-read.table("desastres.txt",header=TRUE)
+n<-nrow(desastres)
+plot(desastres,type="l")
+plot(desastres[2:n,2]-desastres[1:(n-1),2],type="l")
+plot(log(desastres[2:n,2])-log(desastres[1:(n-1),2]),type="l")
+
+#-Defining data-
+data<-list("n"=n,"y"=desastres$No.Desastres,"x"=desastres$Anho)
+data<-list("n"=n,"y"=c(desastres$No.Desastres[1:(n-6)],rep(NA,6)),"x"=desastres$Anho)
+```
+
+### Funciones de graficación
+
+```{r}
+source("util.R")
+graficarY1 <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  #Predictions
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  ymin<-min(desastres[,2],out.yf[,c(1,3,7)])
+  ymax<-max(desastres[,2],out.yf[,c(1,3,7)])
+  
+  par(mfrow=c(1,1))
+  plot(desastres,type="l",col="grey80",ylim=c(ymin,ymax))
+  lines(desastres[,1],out.yf[,1],lwd=2,col=2)
+  lines(desastres[,1],out.yf[,3],lty=2,col=2)
+  lines(desastres[,1],out.yf[,7],lty=2,col=2)
+  lines(desastres[,1],out.yf[,5],lwd=2,col=4)
+  
+  #Medias
+  out.mu<-out.sum[grep("mu",rownames(out.sum)),]
+  par(mfrow=c(1,1))
+  plot(desastres,type="l",col="grey80")
+  lines(desastres[,1],out.mu[,1],lwd=2,col=2)
+  lines(desastres[,1],out.mu[,3],lty=2,col=2)
+  lines(desastres[,1],out.mu[,7],lty=2,col=2)
+}
+graficarTasa <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.tasa<-out.sum[grep("lambda",rownames(out.sum)),]
+  out.tasa<-out.sum[grep("p",rownames(out.sum)),]
+  or<-order(mortality$x)
+  ymin<-min(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  ymax<-max(mortality$y/mortality$n,out.tasa[,c(1,3,7)])
+  plot(mortality$x,mortality$y/mortality$n,ylim=c(ymin,ymax))
+  lines(mortality$x[or],out.tasa[or,1],lwd=2,col=4)
+  lines(mortality$x[or],out.tasa[or,3],lty=2,col=4)
+  lines(mortality$x[or],out.tasa[or,7],lty=2,col=4)
+}
+```
+
+## Ejercicio 6a
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6a.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6a.jags<-jags(data,inits,parameters,model.file="Ej6a.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6a.bugs)
+print("Jags")
+exploracionMCMC(ej6a.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6a.bugs)
+betasMCMC(ej6a.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6a.bugs)
+dicMCMC(ej6a.jags)
+```
+
+```{r}
+graficarY1(ej6a.bugs)
+graficarY1(ej6a.jags)
+```
+
+
+## Ejercicio 6aa
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6aa.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6a.jags<-jags(data,inits,parameters,model.file="Ej6aa.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6a.bugs)
+print("Jags")
+exploracionMCMC(ej6a.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6a.bugs)
+betasMCMC(ej6a.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6a.bugs)
+dicMCMC(ej6a.jags)
+```
+
+```{r}
+graficarY1(ej6a.bugs)
+graficarY1(ej6a.jags)
+```
+
+
+## Ejercicio 6b
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6b.bugs<-bugs(data,inits,parameters,model.file="Ej6b.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6b.jags<-jags(data,inits,parameters,model.file="Ej6b.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6b.bugs)
+print("Jags")
+exploracionMCMC(ej6b.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6b.bugs)
+betasMCMC(ej6b.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6b.bugs)
+dicMCMC(ej6b.jags)
+```
+
+```{r}
+graficarY1(ej6b.bugs)
+graficarY1(ej6b.jags)
+```
+
+
+## Ejercicio 6bb
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6b.bugs<-bugs(data,inits,parameters,model.file="Ej6bb.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6b.jags<-jags(data,inits,parameters,model.file="Ej6bb.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6b.bugs)
+print("Jags")
+exploracionMCMC(ej6b.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6b.bugs)
+betasMCMC(ej6b.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6b.bugs)
+dicMCMC(ej6b.jags)
+```
+
+```{r}
+graficarY1(ej6b.bugs)
+graficarY1(ej6b.jags)
+```
+
+## Ejercicio 6c
+
+```{r}
+#-Defining inits-
+# inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+parameters<-c("tau.b","yf1","mu")
+ej6c.bugs<-bugs(data,inits,parameters,model.file="Ej6c.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6c.jags<-jags(data,inits,parameters,model.file="Ej6c.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+# print("Bugs")
+# exploracionMCMC(ej6c.bugs)
+# print("Jags")
+# exploracionMCMC(ej6c.jags)
+```
+
+### Betas
+
+```{r}
+# betasMCMC(ej6c.bugs)
+# betasMCMC(ej6c.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6c.bugs)
+dicMCMC(ej6c.jags)
+```
+
+```{r}
+# graficarY1(ej6c.bugs)
+# graficarY1(ej6c.jags)
+```
+
+## Ejercicio 6d
+
+```{r}
+#-Defining inits-
+# inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+parameters<-c("tau.b","yf1","mu")
+ej6d.bugs<-bugs(data,inits,parameters,model.file="Ej6d.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6d.jags<-jags(data,inits,parameters,model.file="Ej6d.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+# print("Bugs")
+# exploracionMCMC(ej6d.bugs)
+# print("Jags")
+# exploracionMCMC(ej6d.jags)
+```
+
+### Betas
+
+```{r}
+# betasMCMC(ej6d.bugs)
+# betasMCMC(ej6d.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6d.bugs)
+dicMCMC(ej6d.jags)
+```
+
+```{r}
+# graficarY1(ej6d.bugs)
+# graficarY1(ej6d.jags)
+```
+
+## DICs
+
+```{r}
+dicMCMC(ej6a.bugs)
+dicMCMC(ej6a.jags)
+dicMCMC(ej6b.bugs)
+dicMCMC(ej6b.jags)
+dicMCMC(ej6c.bugs)
+dicMCMC(ej6c.jags)
+dicMCMC(ej6d.bugs)
+dicMCMC(ej6d.jags)
+```
+
