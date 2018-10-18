@@ -295,7 +295,7 @@ inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
 # parameters<-c("beta","yf1","mu","tau","tau.y")
 # parameters<-c("beta","yf1","mu","r")
 # parameters<-c("beta","yf1","mu","tau","r")
-parameters<-c("tau.b","yf1","mu")
+parameters<-c("beta", "tau.b","yf1","mu")
 ej6c.bugs<-bugs(data,inits,parameters,model.file="Ej6c.txt",
                n.iter=5000,n.chains=1,n.burnin=500)
 ej6c.jags<-jags(data,inits,parameters,model.file="Ej6c.txt",
@@ -304,17 +304,17 @@ ej6c.jags<-jags(data,inits,parameters,model.file="Ej6c.txt",
 ```
 
 ```{r}
-# print("Bugs")
-# exploracionMCMC(ej6c.bugs)
-# print("Jags")
-# exploracionMCMC(ej6c.jags)
+print("Bugs")
+exploracionMCMC(ej6c.bugs)
+print("Jags")
+exploracionMCMC(ej6c.jags)
 ```
 
 ### Betas
 
 ```{r}
-# betasMCMC(ej6c.bugs)
-# betasMCMC(ej6c.jags)
+betasMCMC(ej6c.bugs)
+betasMCMC(ej6c.jags)
 ```
 
 ### DIC
@@ -325,8 +325,8 @@ dicMCMC(ej6c.jags)
 ```
 
 ```{r}
-# graficarY1(ej6c.bugs)
-# graficarY1(ej6c.jags)
+graficarY1(ej6c.bugs)
+graficarY1(ej6c.jags)
 ```
 
 ## Ejercicio 6d
