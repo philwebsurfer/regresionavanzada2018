@@ -78,6 +78,10 @@ graficarTasa <- function(modelo){
 
 ## Ejercicio 6a
 
+```{bash}
+cat Ej6a.txt
+```
+
 ```{r}
 #-Defining inits-
 inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
@@ -128,6 +132,10 @@ graficarY1(ej6a.jags)
 
 
 ## Ejercicio 6aa
+
+```{bash}
+cat Ej6aa.txt
+```
 
 ```{r}
 #-Defining inits-
@@ -180,6 +188,10 @@ graficarY1(ej6a.jags)
 
 ## Ejercicio 6b
 
+```{bash}
+cat Ej6b.txt
+```
+
 ```{r}
 #-Defining inits-
 inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
@@ -231,6 +243,10 @@ graficarY1(ej6b.jags)
 
 ## Ejercicio 6bb
 
+```{bash}
+cat Ej6bb.txt
+```
+
 ```{r}
 #-Defining inits-
 inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
@@ -281,6 +297,11 @@ graficarY1(ej6b.jags)
 
 ## Ejercicio 6c
 
+```{bash}
+cat Ej6c.txt
+```
+
+
 ```{r}
 #-Defining inits-
 # inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
@@ -313,8 +334,24 @@ exploracionMCMC(ej6c.jags)
 ### Betas
 
 ```{r}
-betasMCMC(ej6c.bugs)
-betasMCMC(ej6c.jags)
+betasMCMC2 <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  out.sum<-modelo$summary
+  out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+  out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+  dimnames(out.sum.t)[[2]][4]<-"prob"
+  # print(modelo$sims.list$beta)
+  print(out.sum.t)
+}
+betasMCMC2(ej6c.bugs)
+betasMCMC2(ej6c.jags)
+```
+
+```{r}
+hist(ej6c.bugs$sims.list$beta)
 ```
 
 ### DIC
@@ -330,6 +367,10 @@ graficarY1(ej6c.jags)
 ```
 
 ## Ejercicio 6d
+
+```{bash}
+cat Ej6d.txt
+```
 
 ```{r}
 #-Defining inits-
