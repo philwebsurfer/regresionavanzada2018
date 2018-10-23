@@ -76,7 +76,7 @@ graficarTasa <- function(modelo){
 }
 ```
 
-## Ejercicio 6a
+## Ejercicio 6a {.tabset}
 
 ```{bash}
 cat Ej6a.txt
@@ -98,9 +98,9 @@ parameters<-c("beta","yf1","mu")
 # parameters<-c("beta","yf1","mu","tau","r")
 # parameters<-c("tau.b","yf1","mu")
 ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6a.txt",
-               n.iter=5000,n.chains=1,n.burnin=500)
+               n.iter=20000,n.chains=1,n.burnin=4000)
 ej6a.jags<-jags(data,inits,parameters,model.file="Ej6a.txt",
-              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+              n.iter=20000,n.chains=4,n.burnin=4000,n.thin=5)
 ### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
 ```
 
@@ -130,14 +130,14 @@ graficarY1(ej6a.bugs)
 graficarY1(ej6a.jags)
 ```
 
-
-## Ejercicio 6aa
+## Ejercicio 6a - Predicción {.tabset}
 
 ```{bash}
-cat Ej6aa.txt
+cat Ej6a.txt
 ```
 
 ```{r}
+data<-list("n"=n,"y"=c(desastres$No.Desastres[1:(n-6)],rep(NA,6)),"x"=desastres$Anho)
 #-Defining inits-
 inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
 # inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
@@ -152,10 +152,10 @@ parameters<-c("beta","yf1","mu")
 # parameters<-c("beta","yf1","mu","r")
 # parameters<-c("beta","yf1","mu","tau","r")
 # parameters<-c("tau.b","yf1","mu")
-ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6aa.txt",
-               n.iter=5000,n.chains=1,n.burnin=500)
-ej6a.jags<-jags(data,inits,parameters,model.file="Ej6aa.txt",
-              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6a.txt",
+               n.iter=20000,n.chains=1,n.burnin=4000)
+ej6a.jags<-jags(data,inits,parameters,model.file="Ej6a.txt",
+              n.iter=20000,n.chains=4,n.burnin=4000,n.thin=5)
 ### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
 ```
 
@@ -180,13 +180,83 @@ dicMCMC(ej6a.bugs)
 dicMCMC(ej6a.jags)
 ```
 
+### Gráficas 
+
+```{r}
+graficarY1(ej6a.bugs)
+graficarY1(ej6a.jags)
+```
+
+###  Restore data 
+
+```{r}
+#reestablecer para no tener predicción
+data<-list("n"=n,"y"=desastres$No.Desastres,"x"=desastres$Anho)
+```
+
+## Ejercicio 6aa {.tabset}
+
+```{bash}
+cat Ej6aa.txt
+```
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6a.bugs<-bugs(data,inits,parameters,model.file="Ej6aa.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000)
+ej6a.jags<-jags(data,inits,parameters,model.file="Ej6aa.txt",
+              n.iter=10000,n.chains=2,n.burnin=1000,n.thin=1)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+### Gráficas 
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6a.bugs)
+print("Jags")
+exploracionMCMC(ej6a.jags)
+```
+
+```{r}
+exploracionMCMC_r(ej6a.bugs)
+exploracionMCMC_r(ej6a.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6a.bugs)
+betasMCMC(ej6a.jags)
+```
+
+### DIC
+
+```{r}
+dicMCMC(ej6a.bugs)
+dicMCMC(ej6a.jags)
+```
+
 ```{r}
 graficarY1(ej6a.bugs)
 graficarY1(ej6a.jags)
 ```
 
 
-## Ejercicio 6b
+## Ejercicio 6b {.tabset}
 
 ```{bash}
 cat Ej6b.txt
@@ -241,7 +311,7 @@ graficarY1(ej6b.jags)
 ```
 
 
-## Ejercicio 6bb
+## Ejercicio 6bb {.tabset}
 
 ```{bash}
 cat Ej6bb.txt
@@ -263,9 +333,9 @@ parameters<-c("beta","yf1","mu")
 # parameters<-c("beta","yf1","mu","tau","r")
 # parameters<-c("tau.b","yf1","mu")
 ej6b.bugs<-bugs(data,inits,parameters,model.file="Ej6bb.txt",
-               n.iter=5000,n.chains=1,n.burnin=500)
+               n.iter=5000,n.chains=2,n.burnin=1000)
 ej6b.jags<-jags(data,inits,parameters,model.file="Ej6bb.txt",
-              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+              n.iter=5000,n.chains=2,n.burnin=1000,n.thin=5)
 ### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
 ```
 
@@ -295,7 +365,7 @@ graficarY1(ej6b.bugs)
 graficarY1(ej6b.jags)
 ```
 
-## Ejercicio 6c
+## Ejercicio 6c {.tabset}
 
 ```{bash}
 cat Ej6c.txt
@@ -366,7 +436,7 @@ graficarY1(ej6c.bugs)
 graficarY1(ej6c.jags)
 ```
 
-## Ejercicio 6d
+## Ejercicio 6d {.tabset}
 
 ```{bash}
 cat Ej6d.txt

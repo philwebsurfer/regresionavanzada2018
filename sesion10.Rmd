@@ -80,6 +80,11 @@ graficarTasa <- function(modelo){
 
 ## Logit {.tabset}
 
+```{bash}
+cat Ej5a.txt
+```
+
+
 ```{r}
 ej5a.bugs<-bugs(data,inits,parameters,model.file="Ej5a.txt",
                n.iter=50000,n.chains=2,n.burnin=5000)
@@ -126,6 +131,11 @@ graficarY1(ej5a.bugs)
 
 
 ## Base 10 {.tabset}
+
+
+```{bash}
+cat Ej5aa.txt
+```
 
 ```{r}
 ej5a.bugs<-bugs(data,inits,parameters,model.file="Ej5aa.txt",
@@ -174,12 +184,17 @@ graficarY1(ej5a.bugs)
 
 ## Ejercicio 5b {.tabset}
 
+
+```{bash}
+cat Ej5b.txt
+```
+
+
 Inicialización
 
 ```{r}
 parameters<-c("beta","lambda","yf1","yf2")
 ```
-
 
 ```{r}
 ej5b.bugs<-bugs(data,inits,parameters,model.file="Ej5b.txt",
@@ -226,6 +241,11 @@ graficarY1(ej5b.bugs)
 ```
 
 ## Ejemplo 5d {.tabset}
+
+
+```{bash}
+cat Ej5a.txt
+```
 
 ```{r}
 # parameters<-c("beta","lambda","yf1","yf2")

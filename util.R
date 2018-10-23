@@ -18,6 +18,20 @@ exploracionMCMC <- function(modelo){
   par(mfrow=c(2,2))
 }
 
+exploracionMCMC_r <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  z <- out$r
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+  par(mfrow=c(2,2))
+}
+
 betasMCMC <- function(modelo){
   if("BUGSoutput" %in% names(modelo)){
     modelo <- modelo$BUGSoutput
@@ -29,6 +43,9 @@ betasMCMC <- function(modelo){
   dimnames(out.sum.t)[[2]][4]<-"prob"
   print(out.sum.t)
 }
+
+
+
 #DIC
 dicMCMC <- function(modelo){
   if("BUGSoutput" %in% names(modelo)){
