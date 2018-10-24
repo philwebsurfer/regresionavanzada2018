@@ -365,6 +365,114 @@ graficarY1(ej6b.bugs)
 graficarY1(ej6b.jags)
 ```
 
+## Ejercicio 6bbb {.tabset}
+
+```{bash}
+cat Ej6bbb.txt
+```
+
+```{r}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,3),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+# inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu", "tau", "tau")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+ej6b.bugs<-bugs(data,inits,parameters,model.file="Ej6bbb.txt",
+               n.iter=5000,n.chains=1,n.burnin=500)
+ej6b.jags<-jags(data,inits,parameters,model.file="Ej6bbb.txt",
+              n.iter=5000,n.chains=1,n.burnin=500,n.thin=5)
+### es mejor poner un adelgazamiento cuando hay alta correlación entre \Beta_1 y \Beta_2
+```
+
+```{r}
+print("Bugs")
+exploracionMCMC(ej6b.bugs)
+print("Jags")
+exploracionMCMC(ej6b.jags)
+```
+
+### Betas
+
+```{r}
+betasMCMC(ej6b.bugs)
+betasMCMC(ej6b.jags)
+```
+
+### Tau
+
+```{r}
+tauMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  out.sum<-modelo$summary
+  out.sum.t<-out.sum[grep("tau",rownames(out.sum)),c(1,3,7)]
+  # out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+  # dimnames(out.sum.t)[[2]][4]<-"prob"
+  print(out.sum.t)
+}
+tauMCMC(ej6b.bugs)
+```
+
+```{r}
+exploracionTauMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  z <- out$tau
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+  par(mfrow=c(2,2))
+}
+exploracionTau2MCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  z <- out$tau
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+  par(mfrow=c(2,2))
+}
+exploracionTauMCMC(ej6b.bugs)
+exploracionTau2MCMC(ej6b.jags)
+exploracionTauMCMC(ej6b.bugs)
+exploracionTau2MCMC(ej6b.jags)
+```
+
+
+### DIC
+
+```{r}
+dicMCMC(ej6b.bugs)
+dicMCMC(ej6b.jags)
+```
+
+```{r}
+graficarY1(ej6b.bugs)
+graficarY1(ej6b.jags)
+```
+
+
+
+
 ## Ejercicio 6c {.tabset}
 
 ```{bash}
