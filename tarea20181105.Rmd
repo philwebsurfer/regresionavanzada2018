@@ -1,0 +1,17 @@
+---
+title: "Tarea 2018/11/05"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+_Jorge III Altamirano Astorga - 175904_
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(R2jags)
+library(R2OpenBUGS)
+```
+
+#
