@@ -14,4 +14,125 @@ library(R2jags)
 library(R2OpenBUGS)
 ```
 
-#
+# {.tabset}
+
+## 1. Carga de Datos
+
+Estos son los datos cargados en R y los que manipularemos para presentar los resultados del siguiente documento.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-Reading data-
+bills<-read.table("BillsMXc.csv",header=TRUE,sep = ',') %>% 
+  arrange(Year) %>%
+  mutate(Z=Y/C)
+x20 <- bills[which(bills$x20 == 1),]
+x50 <- bills[which(bills$x50 == 1),]
+x100 <- bills[which(bills$x100 == 1),]
+x200 <- bills[which(bills$x200 == 1),]
+x500 <- bills[which(bills$x500 == 1),]
+
+bills$X <- bills$Year
+
+bills
+```
+
+## 1.a Análisis Exploratorio
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+n<-nrow(bills)
+plot(x20$Year, x20$Z, type="o", ylim=c(0,0.1), 
+     main="Porcentaje de falsos por billete",
+     xlab = "Año", col="blue",
+     ylab = "Porcentaje")
+lines(x50$Year, x50$Z, type="o", col="magenta")
+lines(x100$Year, x100$Z, type="o", col="red")
+lines(x200$Year, x200$Z, type="o", col="green")
+lines(x500$Year, x500$Z, type="o", col="brown")
+legend(2002,0.1,legend=c("20", "50", "100", "200", "500"),
+       col=c("blue", "magenta", "red", "green", "brown"), lty=1:5, cex=1)
+```
+
+## Modelo 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-Defining inits-
+inits<-function(){list(tau.b=1,beta=rep(0,5),yf1=rep(1,n))}
+#-Selecting parameters to monitor-
+parameters<-c("alpha", "beta", "yf1", "eta", "p")
+#-Defining data-
+bills.data<-list("n"=n,"ne"=bills$C,"y"=bills$Y,"year"=bills$Year,
+                 "x1"=bills$x20,"x2"=bills$x50,"x3"=bills$x100,"x4"=bills$x200,"x5"=bills$x500)
+modelo.a.bugs <-bugs(bills.data,inits,parameters,model.file="tarea20181105.txt",
+  n.iter=5000,n.chains=1,n.burnin=1000)
+modelo.a.jags <-jags(bills.data,inits,parameters,model.file="tarea20181105.txt",
+               n.iter=5000,n.chains=1,n.burnin=1000,n.thin = 2)
+```
+
+## DIC
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#DIC
+dicMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  print(modelo$DIC)
+}
+dicMCMC(modelo.a.bugs)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dicMCMC(modelo.a.jags)
+```
+
+
+## $Pseudo\ R^2$
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+R2 <- function(y, modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  print(cor(y, out.yf[,1])^2)
+}
+R2(bills$Y,modelo.a.bugs)
+R2(bills$Y,modelo.a.jags)
+```
+
+
+## DIC (old)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#DIC
+dicMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  print(modelo$DIC)
+}
+dicMCMC(modelo.a.bugs)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dicMCMC(modelo.a.jags)
+```
+
+
+## $Pseudo\ R^2$ (old)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+R2 <- function(y, modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  print(cor(y, out.yf[,1])^2)
+}
+R2(bills$Y,modelo.a.bugs)
+R2(bills$Y,modelo.a.jags)
+```
+
+
