@@ -1,0 +1,29 @@
+---
+title: "Sesión 2018/11/07"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+```
+
+# Ejemplo 6 {.tabset}
+
+## Inicialización
+
+### Datos globales para modelos
+
+```{r}
+#--- Ejemplo 6 ---
+mercado<-read.table("mercado.txt",header=TRUE)
+mercado.ts<-ts(mercado,start=c(1990,1),end=c(1991,52),frequency=52)
+n<-nrow(mercado)
+mercado$Tiempo<-1:n
+
+plot(mercado.ts)
+pairs(mercado)
+cor(mercado)
+```
