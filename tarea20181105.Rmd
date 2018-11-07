@@ -1,9 +1,9 @@
 ---
 title: "Tarea 2018/11/05"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
 _Jorge III Altamirano Astorga - 175904_
@@ -16,7 +16,7 @@ library(R2OpenBUGS)
 
 # {.tabset}
 
-## 1. Carga de Datos
+## Carga de Datos
 
 Estos son los datos cargados en R y los que manipularemos para presentar los resultados del siguiente documento.
 
@@ -33,10 +33,8 @@ x500 <- bills[which(bills$x500 == 1),]
 
 bills$X <- bills$Year
 
-bills
+# bills
 ```
-
-## 1.a Análisis Exploratorio
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 n<-nrow(bills)
@@ -52,7 +50,80 @@ legend(2002,0.1,legend=c("20", "50", "100", "200", "500"),
        col=c("blue", "magenta", "red", "green", "brown"), lty=1:5, cex=1)
 ```
 
-## Modelo 
+## Modelo Original del Examen 
+
+```{bash echo=FALSE}
+cat examen1-175904-logit.txt
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-Defining inits-
+inits<-function(){list(beta=rep(0,5),yf1=rep(1,n))}
+#-Selecting parameters to monitor-
+parameters<-c("beta", "yf1", "eta", "p")
+#-Defining data-
+bills.data<-list("n"=n,"ne"=bills$C,"y"=bills$Y,"year"=bills$Year,
+                 "x1"=bills$x20,"x2"=bills$x50,"x3"=bills$x100,"x4"=bills$x200,"x5"=bills$x500)
+modelo.a.bugs <-bugs(bills.data,inits,parameters,model.file="examen1-175904-logit.txt",
+  n.iter=5000,n.chains=1,n.burnin=1000)
+modelo.a.jags <-jags(bills.data,inits,parameters,model.file="examen1-175904-logit.txt",
+               n.iter=5000,n.chains=1,n.burnin=1000,n.thin = 2)
+```
+
+### DIC
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#DIC
+dicMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  print(modelo$DIC)
+}
+dicMCMC(modelo.a.bugs)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+dicMCMC(modelo.a.jags)
+```
+
+
+### $Pseudo\ R^2$
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+R2 <- function(y, modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+  print(cor(y, out.yf[,1])^2)
+}
+R2(bills$Y,modelo.a.bugs)
+R2(bills$Y,modelo.a.jags)
+```
+
+
+## Modelo A 
+
+Utilicé las siguientes fórmulas:
+
+$$
+0 = \sum^{3}_{i=1} {(\beta_i - \overline\beta)} = \sum^{3}_{i=1} \beta_i^\star 
+= \beta_1^\star + \beta_2^\star + \beta_3^\star + \beta_4^\star + \beta_5^\star \\
+\Rightarrow
+\beta_5^\star = -(\beta_1^\star + \beta_2^\star + \beta_3^\star + \beta_4^\star)
+$$
+
+$$
+\alpha^\star = \alpha + \overline\beta_1 + \overline\beta_2 + \overline\beta_3 +\overline\beta_4 + \overline\beta_5
+$$
+
+
+```{bash echo=FALSE}
+cat tarea20181105a.txt
+```
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #-Defining inits-
@@ -62,77 +133,74 @@ parameters<-c("alpha", "beta", "yf1", "eta", "p")
 #-Defining data-
 bills.data<-list("n"=n,"ne"=bills$C,"y"=bills$Y,"year"=bills$Year,
                  "x1"=bills$x20,"x2"=bills$x50,"x3"=bills$x100,"x4"=bills$x200,"x5"=bills$x500)
-modelo.a.bugs <-bugs(bills.data,inits,parameters,model.file="tarea20181105.txt",
+modelo.a.bugs <-bugs(bills.data,inits,parameters,model.file="tarea20181105a.txt",
+  n.iter=20000,n.chains=1,n.burnin=2000)
+modelo.a.jags <-jags(bills.data,inits,parameters,model.file="tarea20181105a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin = 2)
+```
+
+### DIC
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+modelo.a.jags <-jags(bills.data,inits,parameters,model.file="tarea20181105a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin = 2)
+dicMCMC(modelo.a.bugs)
+dicMCMC(modelo.a.jags)
+```
+
+
+### $Pseudo\ R^2$
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+R2(bills$Y,modelo.a.bugs)
+R2(bills$Y,modelo.a.jags)
+```
+
+## Modelo B
+
+```{bash echo=FALSE}
+cat tarea20181105b.txt
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#-Defining inits-
+inits<-function(){list(tau.b=1,beta=rep(0,5),yf1=rep(1,n))}
+#-Selecting parameters to monitor-
+parameters<-c("alpha", "beta", "yf1", "eta", "p")
+#-Defining data-
+bills.data<-list("n"=n,"ne"=bills$C,"y"=bills$Y,"year"=bills$Year,
+                 "x1"=bills$x20,"x2"=bills$x50,"x3"=bills$x100,"x4"=bills$x200,"x5"=bills$x500)
+modelo.a.bugs <-bugs(bills.data,inits,parameters,model.file="tarea20181105b.txt",
   n.iter=5000,n.chains=1,n.burnin=1000)
-modelo.a.jags <-jags(bills.data,inits,parameters,model.file="tarea20181105.txt",
+modelo.a.jags <-jags(bills.data,inits,parameters,model.file="tarea20181105b.txt",
                n.iter=5000,n.chains=1,n.burnin=1000,n.thin = 2)
 ```
 
-## DIC
+### DIC
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-#DIC
-dicMCMC <- function(modelo){
-  if("BUGSoutput" %in% names(modelo)){
-    modelo <- modelo$BUGSoutput
-  }
-  print(modelo$DIC)
-}
 dicMCMC(modelo.a.bugs)
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
 dicMCMC(modelo.a.jags)
 ```
 
 
-## $Pseudo\ R^2$
+### $Pseudo\ R^2$
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-R2 <- function(y, modelo){
-  if("BUGSoutput" %in% names(modelo)){
-    modelo <- modelo$BUGSoutput
-  }
-  out.sum<-modelo$summary
-  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
-  print(cor(y, out.yf[,1])^2)
-}
 R2(bills$Y,modelo.a.bugs)
 R2(bills$Y,modelo.a.jags)
 ```
 
+## Conclusión
 
-## DIC (old)
+No noté gran diferencia, sobretodo que tarda mucho más en converger, puesto que hay mucha variación en la pseudo-R² para el modelo A. Además propongo el modelo B, basándome en su ejercicio 7 "O". Este tiene una mejora menor, pero al menos constante.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-#DIC
-dicMCMC <- function(modelo){
-  if("BUGSoutput" %in% names(modelo)){
-    modelo <- modelo$BUGSoutput
-  }
-  print(modelo$DIC)
-}
-dicMCMC(modelo.a.bugs)
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-dicMCMC(modelo.a.jags)
-```
-
-
-## $Pseudo\ R^2$ (old)
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-R2 <- function(y, modelo){
-  if("BUGSoutput" %in% names(modelo)){
-    modelo <- modelo$BUGSoutput
-  }
-  out.sum<-modelo$summary
-  out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
-  print(cor(y, out.yf[,1])^2)
-}
-R2(bills$Y,modelo.a.bugs)
-R2(bills$Y,modelo.a.jags)
-```
-
-
+Modelo | DIC | Pseudo $R^2$ 
+------ | --- | ----------------
+Examen (BUGS) | 1359 | 0.5460108 
+Examen (Jags) | 1299.438 | 0.5535071 
+Modelo A (BUGS) | 1307 | 0.5531456
+Modelo A (Jags) | 1296.844 | 0.5516561
+Modelo B (BUGS) | 1297 | 0.5540039  
+Modelo B (Jags) | 1296.625 | 0.5539002  

@@ -1,0 +1,28 @@
+model {
+	for(i in 1:n) {
+		y[i] ~ dbin(p[i], ne[i])
+		#mu[i] <- ne[i]*p[i]
+		#Liga logistica
+		#logit(p[i]<-alpha+beta[1]*x1+beta[2]*x2+beta[3]*x3+beta[4]*x4+beta[5]*x5
+		eta[i] <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*x5[i]
+		p[i] <- exp(eta[i])/(1+exp(eta[i]))
+	}
+	beta[1] ~ dnorm(0, 0.001)
+  tau.b ~ dgamma(0.001,0.001)
+	#mu.b[1] <- 0
+	#tau.y ~ dgamma(0.001,0.001)
+  g ~ dnorm(0,0.001)
+	for (j in 2:5) {
+	  beta[j] ~ dnorm(mu.b[j],tau.b)
+	  mu.b[j] <- g*beta[j-1]
+	}
+	alpha ~ dnorm(0, 0.001)
+	#Preds 1
+	for (i in 1:n) {
+		yf1[i] ~ dbin(p[i], ne[i])
+		#yf1[i] ~ dnorm(mu[i],tau.y)
+	  #mu[i] <- beta[i]
+	  #beta[i] ~ dnorm(mu.b[i],tau.b)
+    #mu.b[i] <- g*beta[i-1]
+	}
+}

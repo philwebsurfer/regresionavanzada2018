@@ -1,0 +1,28 @@
+model {
+	for(i in 1:n) {
+		y[i] ~ dbin(p[i], ne[i])
+		#mu[i] <- ne[i]*p[i]
+		#Liga logistica
+		#logit(p[i]<-beta[1]+beta[2]*x2+beta[3]*x3+beta[4]*x4+beta[5]*x5
+		eta[i] <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*x5[i]
+		p[i] <- exp(eta[i])/(1+exp(eta[i]))
+	}
+	alpha ~ dnorm(0, 0.001)
+	for (j in 1:5) {
+		beta[j] ~ dnorm(0, 0.001)
+	}
+	# Las primeras 4 betas
+	for (j in 1:5) {
+		beta_star[j] <- beta[j] - mean(beta[])
+	}
+	alpha_star <- alpha + mean(beta[])
+	#alpha_star <- alpha + mean(beta[1]) + mean(beta[2]) + mean(beta[3]) + mean(beta[4]) + mean(beta[5])
+	# Igualando a 0 la suma de betas
+	# beta_star[5] <- -1*(beta_star[1]+beta_star[2]+beta_star[3]+beta_star[4])
+	#Preds 1
+	for (i in 1:n) {
+	  etaf[i] <- alpha_star + beta_star[1]*x1[i] + beta_star[2]*x2[i] + beta_star[3]*x3[i] + beta_star[4]*x4[i] + beta_star[5]*x5[i]
+	  pf[i] <- exp(etaf[i])/(1+exp(etaf[i]))
+		yf1[i] ~ dbin(pf[i], ne[i])
+	}
+}
