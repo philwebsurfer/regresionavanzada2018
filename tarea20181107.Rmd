@@ -1,5 +1,5 @@
 ---
-title: "Tarea 2018/11/05"
+title: "Tarea 2018/11/07"
 output:
   pdf_document: default
   html_document:
@@ -146,6 +146,18 @@ dicMCMC(modelo.a.jags)
 R2(bills$Y,modelo.a.bugs)
 R2(bills$Y,modelo.a.jags)
 ```
+
+### Betas
+
+```{r}
+modelo.a.bugs$sims.list$alpha  %>% mean
+modelo.a.bugs$sims.list$beta[1] %>% mean
+modelo.a.bugs$sims.list$beta[2] %>% mean
+modelo.a.bugs$sims.list$beta[3] %>% mean
+modelo.a.bugs$sims.list$beta[4] %>% mean
+modelo.a.bugs$sims.list$beta[5] %>% mean
+```
+
 
 ## Modelo B
 

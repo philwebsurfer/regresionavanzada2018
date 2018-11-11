@@ -16,9 +16,6 @@ model {
 		beta_star[j] <- beta[j] - mean(beta[])
 	}
 	alpha_star <- alpha + mean(beta[])
-	#alpha_star <- alpha + mean(beta[1]) + mean(beta[2]) + mean(beta[3]) + mean(beta[4]) + mean(beta[5])
-	# Igualando a 0 la suma de betas
-	# beta_star[5] <- -1*(beta_star[1]+beta_star[2]+beta_star[3]+beta_star[4])
 	#Preds 1
 	for (i in 1:n) {
 	  etaf[i] <- alpha_star + beta_star[1]*x1[i] + beta_star[2]*x2[i] + beta_star[3]*x3[i] + beta_star[4]*x4[i] + beta_star[5]*x5[i]
