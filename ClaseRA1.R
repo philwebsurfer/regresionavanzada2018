@@ -36,7 +36,7 @@ lines(y,f1y,lty=3,col=3)
 
 #Simulacion de datos Bernoulli
 theta0 <- 0.6
-n <- 30
+n <- 100
 x<-rbinom(n,1,theta0)
 hist(x,freq=FALSE)
 
@@ -64,7 +64,7 @@ sig2 <- (a1-1)*(b1-1)/(a1+b1-2)^3
 lines(theta,dnorm(theta,mu,sqrt(sig2)),col=3)
 
 
-# --- AproximaciÃ³n Monte Carlo --- 
+# --- Aproximación Monte Carlo --- 
 #-Ejemplo 1-
 x<-seq(-2,4,,1000)
 f<-function(x){
@@ -72,7 +72,6 @@ f<-function(x){
   out <- ifelse (x < -1 | x>3,0,out)
   out
 }
-(40.9533*3*1/4 + 1/219.47*39) / (3/4+1/219.47)
 plot(x,f(x)*3/44,type="l",ylim=c(0,0.5))
 lines(x,dnorm(x,0,1),lty=2,col=2)
 lines(x,dnorm(x,1,2/3),lty=3,col=3)
@@ -242,7 +241,7 @@ w<-seq(0.01,0.99,,100)
 pp<-0.3
 fw<-pp*dbeta(w,10,10)+(1-pp)*dbeta(w,5,0.05)
 par(mfrow=c(1,1))
-plot(w,fw,type="l"))
+plot(w,fw,type="l")
 
 
 #--- Ejemplo 2---
@@ -429,8 +428,6 @@ parameters<-c("beta","p","yf1","yf2")
 #OpenBUGS
 ej5a.sim<-bugs(data,inits,parameters,model.file="Ej5a.txt",
               n.iter=50000,n.chains=1,n.burnin=5000)
-ej5aa.sim<-bugs(data,inits,parameters,model.file="Ej5aa.txt",
-               n.iter=50000,n.chains=1,n.burnin=5000)
 ej5b.sim<-bugs(data,inits,parameters,model.file="Ej5b.txt",
                n.iter=50000,n.chains=1,n.burnin=5000)
 ej5c.sim<-bugs(data,inits,parameters,model.file="Ej5c.txt",
@@ -800,31 +797,38 @@ cor(mercado)
 
 #-Defining data-
 data<-list("n"=n,"y"=mercado$SHARE,"x1"=mercado$PRICE,"x2"=mercado$OPROM,"x3"=mercado$CPROM)
-data<-list("n"=n,"y"=scale(mercado$SHARE)[1:n],"x1"=scale(mercado$PRICE)[1:n],"x2"=scale(mercado$OPROM)[1:n],"x3"=scale(mercado$CPROM)[1:n])
-data<-list("n"=n,"y"=c(mercado$SHARE[1:(n-4)],NA,NA,NA,NA),"x1"=mercado$PRICE,"x2"=mercado$OPROM,"x3"=mercado$CPROM)
+data<-list("n"=n,"y"=scale(mercado$SHARE)[1:n],"x1"=mercado$PRICE,"x2"=mercado$OPROM,"x3"=mercado$CPROM)
+data<-list("n"=n,"y"=c(scale(mercado$SHARE)[1:(n-4)],NA,NA,NA,NA),"x1"=mercado$PRICE,"x2"=mercado$OPROM,"x3"=mercado$CPROM)
 
 #-Defining inits-
 inits<-function(){list(alpha=0,beta=rep(0,3),tau=1,yf1=rep(1,n))}
 inits<-function(){list(alpha=rep(0,n),beta=matrix(0,nrow=3,ncol=n),tau=1,tau.a=1,tau.b=rep(1,3),yf1=rep(1,n))}
 inits<-function(){list(alpha=0,beta=matrix(0,nrow=3,ncol=n),tau=1,yf1=rep(1,n))}
+inits<-function(){list(beta=rep(0,n),tau=1,tau.b=1,yf1=rep(1,n))}
 
 #-Selecting parameters to monitor-
 parameters<-c("alpha","beta","tau","yf1")
+parameters<-c("beta","tau","yf1")
 
 #-Running code-
 #OpenBUGS
 ej8a.sim<-bugs(data,inits,parameters,model.file="Ej8a.txt",
-               n.iter=10000,n.chains=1,n.burnin=1000)
+               n.iter=10000,n.chains=2,n.burnin=1000)
 ej8b.sim<-bugs(data,inits,parameters,model.file="Ej8b.txt",
-               n.iter=10000,n.chains=1,n.burnin=1000)
+               n.iter=10000,n.chains=2,n.burnin=1000)
 ej8c.sim<-bugs(data,inits,parameters,model.file="Ej8c.txt",
-               n.iter=10000,n.chains=1,n.burnin=1000)
+               n.iter=10000,n.chains=2,n.burnin=1000)
+ej8d.sim<-bugs(data,inits,parameters,model.file="Ej8d.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000)
 #JAGS
 ej8a.sim<-jags(data,inits,parameters,model.file="Ej8a.txt",
-               n.iter=5000,n.chains=1,n.burnin=500)
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin=1)
 ej8b.sim<-jags(data,inits,parameters,model.file="Ej8b.txt",
-               n.iter=10000,n.chains=1,n.burnin=1000,n.thin=10)
-
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin=1)
+ej8c.sim<-jags(data,inits,parameters,model.file="Ej8c.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin=1)
+ej8d.sim<-jags(data,inits,parameters,model.file="Ej8d.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin=1)
 #-Monitoring chain-
 
 #Cadena

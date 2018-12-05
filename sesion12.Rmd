@@ -8,6 +8,7 @@ output:
 ```{r include=FALSE}
 library(R2jags)
 library(R2OpenBUGS)
+source("util.R")
 ```
 
 # Ejemplo 6 {.tabset}
@@ -58,9 +59,6 @@ exploracionMCMC(ej8a.jags)
 
 #### Comparativos
 
-```{r}
-source("util.R")
-```
 
 ```{r}
 dicMCMC(ej8a.bugs)
@@ -111,5 +109,18 @@ plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
 lines(x,out.yf[,1],col=2,cex=0.5)
 lines(x,out.yf[,3],col=2,lty=2)
 lines(x,out.yf[,7],col=2,lty=2)
+
+
+
+###
+#betas
+# out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+# plot(out.beta[1:104,1],type="l")
+# plot(out.beta[105:208,1],type="l")
+# plot(out.beta[209:312,1],type="l")
+# 
+# #alpha
+# out.alpha<-out.sum[grep("alpha",rownames(out.sum)),]
+# plot(out.alpha[,1],type="l")
 ```
 

@@ -1,0 +1,359 @@
+---
+title: "Sesión 2018/11/07"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+source("util.R")
+```
+
+# Ejemplo 8 {.tabset} - Predicción
+
+## Inicialización
+
+### Datos globales para modelos
+
+```{r}
+#--- Ejemplo 6 ---
+mercado<-read.table("mercado.txt",header=TRUE)
+mercado.ts<-ts(mercado,start=c(1990,1),end=c(1991,52),frequency=52)
+n<-nrow(mercado)
+mercado$Tiempo<-1:n
+
+plot(mercado.ts)
+pairs(mercado)
+cor(mercado)
+```
+
+
+# Ejercicio 8c
+
+### Simulares
+
+```{r}
+# inits<-function(){list(alpha=0,beta=rep(0,3),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(alpha=rep(0,n),beta=matrix(0,nrow=3,ncol=n),tau=1,tau.a=1,tau.b=rep(1,3),yf1=rep(1,n))}
+data<-list("n"=n,"y"=c(scale(mercado$SHARE)[1:(n-4)],NA,NA,NA,NA),"x1"=scale(mercado$PRICE)[1:n],"x2"=scale(mercado$OPROM)[1:n],"x3"=scale(mercado$CPROM)[1:n])
+inits<-function(){list(alpha=0,beta=matrix(0,nrow=3,ncol=n),tau=1,yf1=rep(1,n))}
+parameters<-c("alpha","beta","tau","yf1")
+ej8c.bugs<-bugs(data,inits,parameters,model.file="Ej8c-lambda10.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000)
+ej8c.jags<-jags(data,inits,parameters,model.file="Ej8c-lambda10.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin = 1)
+```
+
+#### Betas
+
+```{r}
+# betasMCMC(ej8c.bugs)
+# betasMCMC(ej8c.jags)
+```
+
+
+#### Exploración
+
+
+```{r}
+ej8c.jags$BUGSoutput$sims.list$beta[1,1,1]
+ej8c.bugs$sims.list$beta[1,1,1]
+```
+
+
+#### Comparativos
+
+
+```{r}
+dicMCMC(ej8c.bugs)
+dicMCMC(ej8c.jags)
+```
+
+```{r}
+# R2(ej8c.bugs)
+# R2(ej8c.jags)
+```
+
+
+#### Predicciones
+
+```{r}
+#Predictions
+out.sum<-ej8c.bugs$summary
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+y<-data$y
+ymin<-min(y,out.yf[,c(1,3,7)],na.rm = T)
+ymax<-max(y,out.yf[,c(1,3,7)],na.rm = T)
+#x1 vs. y
+x<-data$x1
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#x2 vs. y
+x<-data$x2
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#x3 vs. y
+x<-data$x3
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#t vs. y
+x<-mercado$Tiempo
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+par(mfrow=c(1,1))
+plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
+lines(x,out.yf[,1],col=2,cex=0.5)
+lines(x,out.yf[,3],col=2,lty=2)
+lines(x,out.yf[,7],col=2,lty=2)
+
+###
+#betas
+# out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+# plot(out.beta[1:104,1],type="l")
+# plot(out.beta[105:208,1],type="l")
+# plot(out.beta[209:312,1],type="l")
+# 
+# #alpha
+# out.alpha<-out.sum[grep("alpha",rownames(out.sum)),]
+# plot(out.alpha[,1],type="l")
+```
+
+```{r}
+plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
+lines(x,out.yf[,1],col=2,cex=0.5)
+lines(x,out.yf[,3],col=2,lty=2)
+lines(x,out.yf[,7],col=2,lty=2)
+points(x,y,pch = 16)
+aux<-scale(mercado$SHARE)
+points(x[(n-3):n], aux[(n-3):n],pch=18)
+```
+
+```{r}
+#betas
+out.beta <-  out.sum[grep("beta", rownames(out.sum)),]
+plot(out.beta[1:104,1],type="l")
+abline(v = n-4)
+plot(out.beta[105:208,1],type="l")
+abline(v = n-4)
+plot(out.beta[209:312,1],type="l")
+abline(v = n-4)
+```
+
+```{r}
+plot(out.beta[1:104,1], type="l", ylim=c(-2,0))
+lines(out.beta[1:104,3], lty=2)
+lines(out.beta[1:104,7], lty=2)
+```
+
+
+### Ejercicio 8d: Modelo con Precisiones Calculadas
+
+# Ejercicio 8c
+
+### Simulares
+
+```{r}
+inits<-function(){list(beta=rep(0,n),tau=1,tau.b=1,yf1=rep(1,n))}
+data<-list("n"=n,"y"=c(scale(mercado$SHARE)[1:(n-4)],NA,NA,NA,NA))
+# inits<-function(){list(alpha=0,beta=matrix(0,nrow=3,ncol=n),tau=1,yf1=rep(1,n))}
+parameters<-c("beta","tau","tau.b","yf1")
+ej8c.bugs<-bugs(data,inits,parameters,model.file="Ej8d.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000)
+ej8c.jags<-jags(data,inits,parameters,model.file="Ej8d.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin = 1)
+```
+
+#### Betas
+
+```{r}
+# betasMCMC(ej8c.bugs)
+# betasMCMC(ej8c.jags)
+```
+
+
+#### Exploración
+
+
+```{r}
+ej8c.jags$BUGSoutput$sims.list$beta[1,1]
+ej8c.bugs$sims.list$beta[1,1]
+```
+
+
+#### Comparativos
+
+
+```{r}
+dicMCMC(ej8c.bugs)
+dicMCMC(ej8c.jags)
+```
+
+```{r}
+# R2(ej8c.bugs)
+# R2(ej8c.jags)
+```
+
+
+#### Predicciones
+
+```{r}
+#Predictions
+#t vs. y
+x<-mercado$Tiempo
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+par(mfrow=c(1,1))
+plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
+lines(x,out.yf[,1],col=2,cex=0.5)
+lines(x,out.yf[,3],col=2,lty=2)
+lines(x,out.yf[,7],col=2,lty=2)
+
+###
+#betas
+# out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+# plot(out.beta[1:104,1],type="l")
+# plot(out.beta[105:208,1],type="l")
+# plot(out.beta[209:312,1],type="l")
+# 
+# #alpha
+# out.alpha<-out.sum[grep("alpha",rownames(out.sum)),]
+# plot(out.alpha[,1],type="l")
+```
+
+```{r}
+plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
+lines(x,out.yf[,1],col=2,cex=0.5)
+lines(x,out.yf[,3],col=2,lty=2)
+lines(x,out.yf[,7],col=2,lty=2)
+points(x,y,pch = 16)
+aux<-scale(mercado$SHARE)
+points(x[(n-3):n], aux[(n-3):n],pch=18)
+```
+
+```{r}
+#betas
+out.beta <-  out.sum[grep("beta", rownames(out.sum)),]
+plot(out.beta[1:104,1],type="l")
+abline(v = n-4)
+# plot(out.beta[105:208,1],type="l")
+# abline(v = n-4)
+# plot(out.beta[209:312,1],type="l")
+# abline(v = n-4)
+```
+
+```{r}
+plot(out.beta[1:104,1], type="l", ylim=c(-2,2))
+lines(out.beta[1:104,3], lty=2)
+lines(out.beta[1:104,7], lty=2)
+abline(v = n-4, lty=2, col=3)
+points(x[(n-4:n)],aux[(n-4:n)])
+```
+
+## Ejercicio 6c:
+
+Error en las notas.
+
+$$
+Observación:\ Y_t | \mu_t ~ Po(\mu_t)\\
+
+Evolución:\ \mu_t = \mu_{t-1} + \omega_t, \omega_t \sim N(0,W-1) \rightarrow \mu_t|\mu_{t-1} ~ N(\mu_{t-1})  \\
+
+Debería\ ser\\
+Y_t|\mu_t \sim Po(\mu_t) \\
+\eta_t = log\ \mu_t \\
+\eta_t = \eta_{t-1} + W_t, W_t \sim N(0, W^{-1}) 
+\Longleftrightarrow \eta_t|\eta_{t-1} \sim(\eta_{t-1},W^{-1})
+$$
+
+
+```{r}
+desastres<-read.table("desastres.txt",header=TRUE)
+n<-nrow(desastres)
+plot(desastres,type="l")
+plot(desastres[2:n,2]-desastres[1:(n-1),2],type="l")
+plot(log(desastres[2:n,2])-log(desastres[1:(n-1),2]),type="l")
+```
+
+```{r}
+
+#-Defining data-
+data<-list("n"=n,"y"=desastres$No.Desastres,"x"=desastres$Anho)
+# data<-list("n"=n,"y"=c(desastres$No.Desastres[1:(n-6)],rep(NA,6)),"x"=desastres$Anho)
+
+#-Defining inits-
+# inits<-function(){list(beta=rep(0,2),yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux=1,aux2=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,2),aux2=1,yf1=rep(1,n),tau.y=1)}
+inits<-function(){list(beta=rep(0,n),tau.b=1,yf1=rep(1,n))}
+# inits<-function(){list(mu=rep(1,n),tau.b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","yf1","mu")
+# parameters<-c("beta","yf1","mu","tau")
+# parameters<-c("beta","yf1","mu","tau","tau.y")
+# parameters<-c("beta","yf1","mu","r")
+# parameters<-c("beta","yf1","mu","tau","r")
+# parameters<-c("tau.b","yf1","mu")
+
+#-Running code-
+#OpenBUGS
+# ej6a.sim<-bugs(data,inits,parameters,model.file="Ej6a.txt",
+#                n.iter=50000,n.chains=1,n.burnin=5000)
+# ej6bb.sim<-bugs(data,inits,parameters,model.file="Ej6bb.txt",
+#                n.iter=50000,n.chains=1,n.burnin=5000)
+ej6c.jags<-jags(data,inits,parameters,model.file="Ej6c.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000,n.thin=1)
+ej6c.bugs<-bugs(data,inits,parameters,model.file="Ej6c.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000)
+# ej6d.sim<-bugs(data,inits,parameters,model.file="Ej6d.txt",
+               # n.iter=50000,n.chains=1,n.burnin=5000)
+```
+
+```{r}
+out<-ej6c.bugs$sims.list
+out.sum<-ej6c.bugs$summary
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(desastres[,2],out.yf[,c(1,3,7)])
+ymax<-max(desastres[,2],out.yf[,c(1,3,7)])
+
+par(mfrow=c(1,1))
+plot(desastres,type="l",col="grey80",ylim=c(ymin,ymax))
+lines(desastres[,1],out.yf[,1],lwd=2,col=2)
+lines(desastres[,1],out.yf[,3],lty=2,col=2)
+lines(desastres[,1],out.yf[,7],lty=2,col=2)
+lines(desastres[,1],out.yf[,5],lwd=2,col=4)
+
+#Medias
+out.mu<-out.sum[grep("mu",rownames(out.sum)),]
+par(mfrow=c(1,1))
+plot(desastres,type="l",col="grey80")
+lines(desastres[,1],out.mu[,1],lwd=2,col=2)
+lines(desastres[,1],out.mu[,3],lty=2,col=2)
+lines(desastres[,1],out.mu[,7],lty=2,col=2)
+```
+
+```{r}
+desastres[n-6,1]
+```
+
+```{r}
+options(mc.cores = 12)
+library(loo)
+waic(ej8c.bugs$sims.list$yf1)
+```
+
