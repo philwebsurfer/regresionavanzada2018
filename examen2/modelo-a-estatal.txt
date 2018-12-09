@@ -1,0 +1,32 @@
+model{
+  #Likelihood
+  for(i in 1:n){
+    y[i] ~ dpois(mu[i])
+    mu[i] <- theta[i]*ne[i]
+    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i] +
+      delta[i,1]*s1[i] +  delta[i,2]*s2[i] +  delta[i,3]*s3[i] +  delta[i,4]*s4[i] +  delta[i,5]*s5[i] +  delta[i,6]*s6[i] + 
+      delta[i,7]*s7[i] +  delta[i,8]*s8[i] +  delta[i,9]*s9[i] +  delta[i,10]*s10[i] +  delta[i,11]*s11[i] +  delta[i,12]*s12[i] + 
+      delta[i,13]*s13[i] +  delta[i,14]*s14[i] +  delta[i,15]*s15[i] +  delta[i,16]*s16[i] +  delta[i,17]*s17[i] +  delta[i,18]*s18[i] + 
+      delta[i,19]*s19[i] +  delta[i,20]*s20[i] +  delta[i,21]*s21[i] +  delta[i,22]*s22[i] +  delta[i,23]*s23[i] +  delta[i,24]*s24[i] + 
+      delta[i,25]*s25[i] +  delta[i,26]*s26[i] +  delta[i,27]*s27[i] +  delta[i,28]*s28[i] +  delta[i,29]*s29[i] +  delta[i,30]*s30[i] + 
+      delta[i,31]*s31[i] +  delta[i,32]*s32[i]
+  }
+  #Priors
+  alpha ~ dnorm(0, 0.001)
+  for(j in 1:5){
+    beta[j] ~ dnorm(0, 0.001)
+  }
+  for(j in 1:n){
+    for(k in 1:32){
+      delta[j,k] ~ dnorm(0, 0.001)
+    }
+  }
+  #Predictions
+  for(i in 1:n){
+    yf[i] ~ dpois(mu[i])
+  }
+  #deltas
+  for(k in 1:32){
+    delta.mean[k] <- mean(delta[,k])
+  }
+}
