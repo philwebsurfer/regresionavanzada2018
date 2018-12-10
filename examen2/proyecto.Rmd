@@ -1,9 +1,9 @@
 ---
 title: "Examen 2"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 _175904 - Jorge III Altamirano Astorga_
