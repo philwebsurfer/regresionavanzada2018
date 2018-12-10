@@ -7,7 +7,8 @@ output:
 ---
 
 _175904 - Jorge III Altamirano Astorga_
-_Elizabeth Viveros Vergara_
+
+_161224 - Elizabeth Viveros Vergara_
 
 ```{r include=FALSE}
 library(tidyverse)
@@ -20,31 +21,89 @@ library(mxmaps)
 
 # {.tabset}
 
-## EDA
+## I. Introducción
 
-```{r warning=FALSE}
+### Descripción del problema
+
+La seguridad social en México está fraccionada en distintos institutos (IMSS, ISSSTE, ISFAM, Seguro Popular). Nuestro cliente: Seguro Popular tiene, al igual que cualquier dependencia recursos limitados y compromisos que cumplir: mejorar la salud a nivel nacional y que todos estemos cubiertos.
+
+### Contexto 
+
+Existe una problemática que afecta a estos institutos: la doble derechohabiencia. Que principalmente ocurre por 2 razones:
+
+1. Los institutos tardan hasta 6 meses en reportar las bajas.
+
+2. Existe dolo en algunas personas: por ejemplo, dentro de las representaciones estatales del Seguro Populares, que buscan mantener un presupuesto sin revisar la derechohabiencia existente en algún otro instituto de seguridad social.
+
+Tenemos los datos de casi una década en la cual buscamos detectar patrones y tendencias para ofrecer cumplimiento legal --evitar doble derechohabiencia--, y mejoramiento en el aprovechamiento de los recursos.
+
+### Objetivos a resolver
+
+1. Detectar los Entidades Federativas donde existe una problemática mayor.
+
+2. Revelar tendencias en dichas Entidades que permitan establecer controles «ad hoc» que permitan combatir esta práctica.
+
+## II. Descripción de la información: 
+
+### Descripción las variables y Unidades de Medida
+
+Tenemos 288 observaciones que comprenden las 32 entidades federativas a través de `length(seguro$Anno %>% as.factor() %>% levels)` (nueve) años.
+
+Las variables de nuestros datos son como siguen:
+
+* IDEntidad: Código INEGI para la entidad federativa, la cual es un número entero del 1 al 32
+
+* Entidad: Texto libre del nombre del Estado (nombre corto)
+
+* Y: doble derecho habiencia, en número de habitantes
+
+* ETU: Empleo Temporal Urbano, en número de habitantes
+
+* ETR: Empleo Temporal Rural, en número de habitantes
+
+* Pobreza: Población en situación de pobreza, según la clasificación Oficial; en número de habitantes
+
+* Desem: Población de 15 y más años no económicamente activa, en número de habitantes
+
+** Tasa: pero Tasa de desocupación por entidad federativa como promedio móvil de tres con extremo superior, según definición Oficial
+
+Fue necesario adecuar mínimamente los datos, como tomar los guiones como datos nulos y convertirlos a cero. Esto se dio particularmente en la Ciudad de México, que tenía datos nulos para el ETR, que realmente significa 0. Dado que no hay Empleo Temporal Rural de acuerdo a los datos oficiales.
+
+```{r warning=FALSE, echo=FALSE}
 seguro <- read_tsv("proyecto.csv", col_types='icnnnndni', na = c('-', 'NA', ''))
 seguro[which(!complete.cases(seguro)), 5] <- 0
 seguro[,c(1,3:6,8)] <- sapply(seguro[,c(1,3:6,8)], as.integer) #convertir a enteros
 summary(seguro)
 ```
 
+### Análisis exploratorio de datos
 
-```{r}
+Convertimos a dummies las variables categóricas: Año y Entidad
+
+```{r echo=FALSE}
 seguro2 <- dummy_cols(seguro, c("Entidad", "Anno"))
 names(seguro2) <- gsub(" ", "_", names(seguro2))
 n <- nrow(seguro2)
 glimpse(seguro2)
 ```
 
-```{r}
+Aquí observamos más claramente la relación entre variables. De la cual destacamos: ETU, Desem, Pobr por ser las más significativas de acuerdo a este Análisis Exploratorio.
+
+También se observa como Año es categórica.
+
+Esta gráfica particularmente nos gustó por mostrar las distribuciones y los diagramas de dispersión.
+
+
+```{r echo=FALSE}
 print(ggpairs(seguro[,-c(1,2,7)]), progress=F)
 ggsave("0eda.png") %>% invisible
 ```
 
 ### GEDA 
 
-```{r}
+En esta sección se muestra cómo se distribuye nuestras variables en un mapa. Así podemos discernir más claramente regiones que pudieran surgir.
+
+```{r echo=FALSE}
 mxstate_choropleth(seguro %>% 
                      select(IDEntidad, Y) %>%
                      mutate(region=IDEntidad, value=Y) %>% 
@@ -54,7 +113,7 @@ mxstate_choropleth(seguro %>%
 ggsave("1derechohabiencia-estados.png")
 ```
 
-```{r}
+```{r echo=FALSE}
 mxstate_choropleth(seguro %>% 
                      select(IDEntidad, Desem) %>%
                      mutate(region=IDEntidad, value=Desem) %>% 
@@ -65,7 +124,7 @@ ggsave("2poblacioninactiva-estados.png")
 ```
 
 
-```{r}
+```{r echo=FALSE}
 mxstate_choropleth(seguro %>% 
                      select(IDEntidad, Y, Desem) %>%
                      mutate(region=IDEntidad, value=Y/Desem) %>% 
@@ -76,25 +135,59 @@ mxstate_choropleth(seguro %>%
 ggsave("3porcentaje-estados.png") 
 ```
 
-## a. Modelo Estático
+```{r echo=FALSE}
+mxstate_choropleth(seguro %>% 
+                     select(IDEntidad, Y, ETU) %>%
+                     mutate(region=IDEntidad, value=ETU) %>% 
+                     group_by(region) %>%
+                     summarize(value=mean(value)*100),
+                 title="Empleo Temporal Urbano\n por Estado", 
+                 legend = "ETU")
+ggsave("4etu-estados.png") 
+```
+
+```{r echo=FALSE}
+mxstate_choropleth(seguro %>% 
+                     select(IDEntidad, Y, ETR) %>%
+                     mutate(region=IDEntidad, value=ETR) %>% 
+                     group_by(region) %>%
+                     summarize(value=mean(value)*100),
+                 title="Empleo Temporal Rural\n por Estado", 
+                 legend = "ETR")
+ggsave("5etr-estados.png") 
+```
+
+## Modelado e Implementación
+
+De manera general, gracias a la guía del Doctor Nieto realizamos nuestra exploración de modelos lineales generalizados por pasos; por nivel de complejidad de menor a mayor:
+
+1. Nacional, Estático
+
+2. Por Entidad Federativa, Estático
+
+3. Por Entidad Federativa, Dinámico
+
+4. Por Entidad Federativa, Dinámico y Jerárquico
+
+En la siguiente sección vamos describan con detalle de cada uno de los modelos creados con sus respectivas especificaciones. Se utilizó Jags por ser más rápido y paralelizable. 
+
+Como aprendimos en clase: utilizamos el DIC para comparar los distintos modelos, también considerando que si hay una diferencia no significativa entre los valores DIC: se puede compensar con mayor interpretabilidad.
+
+## a. Modelo Lineal Generalizado Estático
 
 ### Modelo Nacional
 
 $$
 Y \sim Poisson(\mu) \\
-\mu = \theta * PoblaciónInactiva \\
+\mu = \theta * Desem \\
 cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR +
- \beta_4 \cdot PoblaciónPobreza + \beta_5 \cdot Año \\
+ \beta_4 \cdot Pobr + \beta_5 \cdot Año \\
 \alpha \sim Normal(0,0.001) \\
 \beta \sim Normal(0,0.001)
 $$
 
-```{bash}
-cat modelo-a.txt
-```
 
-
-```{r}
+```{r echo=FALSE}
 data<-list("n"=n,"y"=seguro2$Y,
            "x1"=seguro2$ETU, "x2"=seguro2$ETR, "x3"=seguro2$Pobr, "t"=seguro2$Anno, "ne"=seguro2$Desem)
 inits<-function(){list(alpha=0,beta=rep(0,5),yf=rep(1,n))}
@@ -103,19 +196,57 @@ modelo.a <-jags(data,inits,parameters,model.file="modelo-a.txt",
                 n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
 ```
 
-```{r}
+#### Cadenas y Convergencia
+
+```{r echo=FALSE}
+exploracionMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  z <- out$beta[,2]
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+  par(mfrow=c(2,2))
+}
+exploracionMCMC(modelo.a)
+```
+
+
+#### Sumario
+
+```{r echo=FALSE}
 modelo.a$BUGSoutput$summary[1:6,c(1,3,7)]
 ```
 
-```{r}
+#### DIC
+
+```{r echo=FALSE}
 modelo.a$BUGSoutput$DIC
+```
+
+#### $R^2$
+
+```{r echo=FALSE}
+R2 <- function(x, modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+  (cor(x%>%as.double(), out.yf[,1])^2)
+}
+R2(seguro2$Y, modelo.a)
 ```
 
 ### Modelos Estatales
 
 $$
 Y \sim Poisson(\mu) \\
-\mu = \theta * PoblaciónInactiva \\
+\mu = \theta * Desem \\
 cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \beta_3 \cdot Pobr \\
  \beta_4 \cdot Año + \delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
  \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} \\
@@ -123,10 +254,7 @@ cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \beta_3 \cdot
 \beta \sim Normal(0,0.001)
 $$
 
-```{bash}
-cat modelo-a-estatal.txt
-```
-
+#### Valores de Inicialización
 
 ```{r}
 data<-list("n"=n,"y"=seguro2$Y,
@@ -146,26 +274,39 @@ modelo.a <-jags.parallel(data,inits,parameters,model.file="modelo-a-estatal.txt"
                 n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
 ```
 
-```{r}
+#### Cadenas y Convergencia
+
+```{r echo=FALSE}
+exploracionMCMC(modelo.a)
+```
+
+#### Sumario
+
+```{r echo=FALSE}
 summary <- modelo.a$BUGSoutput$summary
 summary <- summary[grep('(alpha|beta|delta)',rownames(summary)), c(1,3,7)] 
 summary %>% round(., 4)
 ```
 
-```{r}
+#### DIC
+
+```{r echo=FALSE}
 modelo.a$BUGSoutput$DIC
 ```
 
-## b. Modelo Dinámico
+#### $R^2$
 
-```{bash}
-cat modelo-b.txt
+```{r echo=FALSE}
+R2(seguro2$Y, modelo.a)
 ```
+
+
+## b. Modelo Dinámico
 
 $$
 Y \sim Poisson(\mu) \\
-\mu = \theta * PoblaciónInactiva \\
-cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \beta_3 \cdot PoblaciónPobreza + \beta_4 \cdot Año + \\
+\mu = \theta * Desem \\
+cloglog(\theta) = \alpha + \beta_{1} \cdot ETU + \beta_{2} \cdot ETR + \beta_3 \cdot Pobr + \\
 \delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
  \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} + \\
  + \mu_g \cdot \gamma_{1} \cdot I_{2009} + \mu_g \cdot \gamma_{2} \cdot I_{2010} + ... + \mu_g \cdot \gamma_{10} \cdot I_{2017}  \\
@@ -176,13 +317,9 @@ g \sim Normal(0, 0.001) \\
 \mu_g \sim g \cdot Normal(\gamma_{t-32}) 
 $$
 
+### Valores de Inicialización
 
-```{r}
-seguro2$Anno %>% as.factor %>% levels
-```
-
-
-```{r}
+```{r echo=FALSE}
 data<-list("n"=n,"y"=seguro2$Y,
            "x1"=seguro2$ETU, "x2"=seguro2$ETR, "x3"=seguro2$Pobr, "t"=seguro2$Anno, "ne"=seguro2$Desem,
            "s1" =seguro2$Entidad_AGUASCALIENTES, "s2" =seguro2$Entidad_BAJA_CALIFORNIA, "s3" =seguro2$Entidad_BAJA_CALIFORNIA_SUR,
@@ -202,38 +339,53 @@ modelo.b <-jags.parallel(data,inits,parameters,model.file="modelo-b.txt",
                 n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
 ```
 
-```{r}
+### Cadenas y Convergencia
+
+```{r echo=FALSE}
+exploracionMCMC(modelo.b)
+```
+
+### Sumario
+
+```{r echo=FALSE}
 summary <- modelo.b$BUGSoutput$summary
 summary <- summary[grep('(alpha|beta|delta|gamma)',rownames(summary)), c(1,3,7)] 
 summary %>% round(., 8)
 ```
 
-```{r}
+### DIC
+
+```{r echo=FALSE}
 modelo.b$BUGSoutput$DIC
 ```
 
-## Modelo Jerárquico
+### $R^2$
 
-```{bash}
-cat modelo-c.txt
+```{r echo=FALSE}
+R2(seguro2$Y, modelo.b)
 ```
+
+
+## Modelo Jerárquico
 
 $$
 Y \sim Poisson(\mu) \\
-\mu = \phi\cdot \{ \theta * PoblaciónInactiva \} \\
-cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \\
- \beta_4 \cdot PoblaciónPobreza + \beta_5 \cdot Año + \delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
- \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} + \\
- + \mu_g \cdot \gamma_{1} \cdot I_{2009} + \mu_g \cdot \gamma_{2} \cdot I_{2010} + ... + \mu_g \cdot \gamma_{10} \cdot I_{2017}  \\
+\mu = \phi\cdot \{ \theta * Desem \} \\
+cloglog(\theta) = \alpha + \beta_{i1} \cdot ETU + \beta_{i2} \cdot ETR + \\
+ \beta_{i3} \cdot Pobr + \delta_{i1} \cdot I_{Aguascalientes} + \delta_{i2} \cdot I_{BajaCalifornia} + 
+ \delta_{i3} \cdot I_{BCS} + ... + \delta_{i35} \cdot I_{Zacatecas} + \\
+ + \mu_{g} \cdot \gamma_{i1} \cdot I_{2009} + \mu_g \cdot \gamma_{i2} \cdot I_{2010} + ... + \mu_g \cdot \gamma_{i10} \cdot I_{2017},i=[1:n]  \\
 \alpha \sim Normal(0,0.001) \\
 \beta \sim Normal(0,0.001) \\
-\gamma_t \sim Normal(0,0.001) \\
+\gamma \sim Normal(0,0.001) \\
 g \sim Normal(0, 0.001) \\
-\mu_g \sim g \cdot Normal(\gamma_{t-32}) 
+\mu _{g} \sim g \cdot Normal(\gamma_{t-32}, \tau) \\
+\tau \sim Gamma(0.001, 0.001)
 $$
 
+### Valores de Inicialización
 
-```{r}
+```{r echo=FALSE}
 data<-list("n"=n,"y"=(seguro2$Y),
            "x1"=(seguro2$ETU), "x2"=(seguro2$ETR), "x3"=(seguro2$Pobr), 
            "ne"=(seguro2$Desem),
@@ -254,27 +406,80 @@ modelo.c <-jags.parallel(data,inits,parameters,model.file="modelo-c.txt",
                 n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
 ```
 
-```{r}
+#### Cadenas y Convergencia
+
+```{r echo=FALSE}
+exploracionMCMC(modelo.c)
+```
+
+#### Sumario
+
+```{r echo=FALSE}
 summary <- modelo.c$BUGSoutput$summary
 summary <- summary[grep('(alpha|beta|delta|gamma)',rownames(summary)), c(1,3,7)] 
 summary %>% round(., 8)
 ```
 
-```{r}
+#### DIC
+
+```{r echo=FALSE}
 modelo.c$BUGSoutput$DIC
 ```
 
-## Análisis
+#### $R^2$
 
-```{r}
+```{r echo=FALSE}
+R2(seguro2$Y, modelo.c)
+```
+
+## IV. Interpretación de resultados
+
+En la sección anterior no hicimos mucho detalle, más allá de la descripción matemática debido a que preferimos consolidarlo en esta sección.
+
+Como se pudo observar en la sección anterior descartamos el modelo estático nacional por tener un sobre ajuste dado que tiene una $ R^2 $ de 1.
+
+Respecto al resto de los modelos consideramos esto lo más relevante.
+
+```{r echo=FALSE}
+data.frame(modelo=c("Modelo Estático Estatal", "Modelo Dinámico Estatal", "Modelo Dinámico Estatal Jerárquico"),
+           DIC=c(modelo.a$BUGSoutput$DIC, modelo.b$BUGSoutput$DIC, modelo.c$BUGSoutput$DIC),
+           R2=c(R2(seguro2$Y, modelo.a),R2(seguro2$Y,modelo.b),R2(seguro2$Y,modelo.c)))
+```
+
+Podemos ver que los valores de pseudo R2 tienen un posible sobre ajuste por lo que hemos decidido darle prioridad al modelo dinámico estatal (Modelo B), dado que es mucho más sencillo de interpretar, y no sobre ajusta.
+
+Por lo que resta de la sección será dedicada a dicho modelo.
+
+### Modelo Dinámico Estatal
+
+Aquí mostramos los valores de las $\delta$ que proporcionan el coeficiente para las Entidades Federativas. Dichos valores se pudiera considerar que no son tan significativos, al ser muy cercanos al cero. Pero aún así, existen diferencias.
+
+Es relevante esta información si fuera un caso de negocio debido a que: cada administración estatal administra los recursos del programa Seguro Popular que nos hemos enfocado en este trabajo, por lo que este análisis lo consideramos relevante; por ello lo hemos incluido.
+
+Consideramos utilizar el mapa como herramienta, dado que es mucho más fácil de interpretar que los 32 valores de manera aislada, además de que pudieran surgir regiones, cosa que no ocurrió de manera muy marcada; se encuentra en este sentido el país fragmentado. De cualquier manera incluimos los valores, para la consideración del lector.
+
+```{r echo=FALSE}
 summary <- modelo.b$BUGSoutput$summary
 summary <- summary[grep('(delta)',rownames(summary)), c(1)] 
 summary <- summary  %>% data.frame
 summary <- summary %>% mutate(region=1:32)
+print(summary)
 names(summary) <- c("value", "region")
-mxstate_choropleth(summary, title = "Mapa por Estados", legend = "Valores delta", num_colors = 7)
-ggsave("deltas-estados.png") %>% invisible
+mxstate_choropleth(summary, title = "Mapa por Estados", legend = "Valores delta", num_colors = 4)
+ggsave("6deltas-estados.png") %>% invisible
 ```
+
+Dado que las administraciones políticas tienen una temporalidad hemos decidido mostrar los coeficientes anuales $t$. Aunque como se puede observar, no encontramos mayor mucha aportación por dichos valores.
+
+```{r echo=FALSE}
+summary <- modelo.b$BUGSoutput$summary
+summary <- summary[grep('(gamma)',rownames(summary)), c(1,3,7)] %>% round(4)
+summary <- summary  %>% data.frame
+summary <- summary %>%  mutate(Anno=2008:2017) %>% select("Anno", gamma_media=mean, 'gamma_2.5%' = 'X2.5.', 'gamma_97.5%'=X97.5.)
+# summary <- summary %>%  mutate(Anno=2008:2017) %>% select("Anno", Gamma = '.') 
+summary
+```
+
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 graficar <- function(data, modelo, title="", filter_column="x1"){
@@ -294,12 +499,12 @@ graficar <- function(data, modelo, title="", filter_column="x1"){
   ymin<-min(y,out.yf[or,c(1,3,7)])
   ymax<-max(y,out.yf[or,c(1,3,7)])
   par(mfrow=c(1,1))
-  plot(x,y,ylim=c(ymin,ymax),main=title,sub = "Donde x es el Circulante; y es el número de billetes falsos")
+  plot(x,y,ylim=c(ymin,ymax),main=title,sub = "x es Desem; y es la Doble Derechohabiencia")
   lines(x,out.yf[or,1],lwd=2,col=2)
   lines(x,out.yf[or,3],lty=2,col=2)
   lines(x,out.yf[or,7],lty=2,col=2)
 }
-i <- 3
+i <- 6
 lapply(list(
   c("Año 2010", "t2"),
   c("Año 2011", "t3"),
@@ -310,79 +515,82 @@ lapply(list(
   c("Año 2016", "t8"),
   c("Año 2017", "t9")
 ), function(x){
-  assign("i", i+1)
+  assign("i", (i+1), envir = .GlobalEnv)
   graficar(data, modelo.b, x[1], x[2])
-  print(i)
   ggsave(paste0(i,"por-anno.png"))
 }) %>% invisible
-# lapply(list(
-#   c("Billete de $20", "t1"),
-#   c("Billete de $50", "t2"),
-#   c("Billete de $100", "t3"),
-#   c("Billete de $200", "t4"),
-#   c("Billete de $500", "t5")
-# ), function(x){
-#   graficar(data, modelo.b, x[1], x[2])
-# }) %>% invisible
+
 ```
 
-```{r}
-graficar <- function(data, modelo, title="", filter_column="x1"){
-  if("BUGSoutput" %in% names(modelo)){
-    modelo <- modelo$BUGSoutput
-  }
-  data <- data %>% data.frame
-  or <- which(data[grep(filter_column, names(data))]==1)
-  
-  # data <- data[or,]
-  #Predictions
-  out.sum<-modelo$summary
-  out.yf<-out.sum[grep("yf",rownames(out.sum)),]
-  # print(y)
-  # print(out.yf[or])
-  x<-data$ne
-  y<-data$y
-  # print(out.sum)
-  # print(length(y))
-  # print(length(out.yf))
-  # print(or)
-  ymin<-min(y,out.yf[,c(1,3,7)])
-  ymax<-max(y,out.yf[,c(1,3,7)])
-  # print(ymax)
-  par(mfrow=c(1,1))
-  plot(x,y,ylim=c(ymin,ymax),main=title,sub = "Donde x es el Circulante; y es el número de billetes falsos")
-  # print(out.sum)
-  # print(or)
-  # print(paste(length(x), length(out.yf[,1])))
-  # lines(x,out.yf[,1],lwd=2,col=2)
-  lines(x,out.yf[,3],lty=2,col=2)
-  # lines(x,out.yf[,7],lty=2,col=2)
-}
-graficar(data, modelo.b, "t1", "t1")
-# lapply(list(
-#   c("Billete de $20", "x1"),
-#   c("Billete de $50", "x2"),
-#   c("Billete de $100", "x3"),
-#   c("Billete de $200", "x4"),
-#   c("Billete de $500", "x5")
-# ), function(x){
-#   graficar(bills.data, modelo.a.bugs, x[1], x[2])
-# }) %>% invisible
-```
+Como se puede observar: las betas no fueron significativas en ninguno de nuestras 3 variables explicativas. Lo cual es remarcable, puesto que en todos los modelos ocurrió lo mismo. 
 
-
-```{r}
-summary <- modelo.c$BUGSoutput$summary
-summary <- summary[grep('(gamma)',rownames(summary)), c(1,3,7)] 
-summary <- summary %>% round(., 8) %>% data.frame
-summary$var <- rownames(summary)
-summary <- summary %>% select(var, mean)
-rownames(summary) <- NULL
+```{r echo=FALSE}
+summary <- modelo.b$BUGSoutput$summary
+summary <- summary[grep('(beta)',rownames(summary)), c(1,3,7)] %>% round(4)
+summary <- summary[1:3,]  %>% data.frame
+summary <- summary %>%  
+  mutate(beta=paste0("beta_",1:3), "var_explicativa"=c("ETR", "EPR", "Pobr")) %>%
+  select("beta_i"=beta, "var_explicativa", 
+         beta_media=mean, 'beta_2.5%' = 'X2.5.', 'beta_97.5%'=X97.5.) 
 summary
-#plot
 ```
 
-```{r}
-plot(summary)
+### Cadenas y Convergencia
+
+Las cadenas se comportaron relativamente normal, y en convergieron en un tiempo y número de simulaciones razonables.
+
+```{r echo=FALSE}
+exploracionMCMC(modelo.b)
 ```
 
+### Conclusiones Finales
+
+Buscamos ser sinceros en este reporte, y mostramos tanto hallazgos como algunos de los tropiezos encontrados. No todos los objetivos iniciales se cumplieron. Sin embargo, si encontramos información que buscábamos. Esto desgraciadamente no se pudo encontrar:
+
+* Un modelo jerárquico, dinámico, generalizado que permitiera tener muchas variables explicativas.
+
+* Las variables explicativas y sus valores $\beta$ no arrojan gran información.
+
+Destacamos lo que resultó más sorprendente. Mediante el análisis gráfico exploratorio de datos pudimos observar de manera más clara. Adicionalmente, se logró el objetivo de mostrar las Entidades Federativas donde se pudieran implementar controles que combatan la doble derecho habiencia.
+
+
+## V. Referencias
+
+* LE Nieto-Barajas. ITAM. Notas y Código del Curso de Regresión Avanzada. <http://allman.rhon.itam.mx/~lnieto/index_archivos/>
+
+* D Valle-Jones. GitHub. Mapas de México. <https://github.com/diegovalle/mxmaps>
+
+* D Valle-Jones. Autor. Mapas de México. <https://www.diegovalle.net/mxmaps/>
+
+## VI. Apéndice
+
+### Código de Este Notebook
+
+```{bash}
+cat proyecto.Rmd
+```
+
+
+### Modelo Lineal Generalizado A: Nacional, Estático
+
+```{bash}
+cat modelo-a.txt
+```
+
+### Modelo Lineal Generalizado A: Por Entidad Federativa, Estático
+
+```{bash}
+cat modelo-a-estatal.txt
+```
+
+### Modelo Lineal Generalizado A: Nacional, Dinámico
+
+```{bash}
+cat modelo-b.txt
+```
+
+### Modelo Lineal Generalizado A: Nacional, Dinámico y Jerárquico
+
+```{bash}
+cat modelo-c.txt
+```
