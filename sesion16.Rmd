@@ -1,0 +1,301 @@
+---
+title: "Sesión 16"
+output:
+  html_document:
+    df_print: paged
+---
+
+_03/12/2018_
+
+_Jorge III Altamirano Astorga - 175904_
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+library(magrittr)
+source("util.R")
+```
+
+# Ejemplo 7 {.tabset}
+
+## EDA
+
+```{r}
+#-Reading data-
+leucemia<-read.table("leucemia.txt",header=TRUE)
+n<-nrow(leucemia)
+par(mfrow=c(2,2))
+plot(leucemia$Obs)
+plot(leucemia$Obs/leucemia$Pops*10000)
+plot(leucemia$Obs/leucemia$Esp)
+abline(h=1,col=2)
+```
+
+## Modelo A
+
+$$
+Y_i | \theta \sim Poisson(\theta P_i), \theta \sim Gamma(0.001, 0.001)
+$$
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=leucemia$Obs,"ne"=leucemia$Pops/10000)
+#-Defining inits-
+inits<-function(){list(theta=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("theta","yf1")
+
+#-Running code-
+#OpenBUGS
+ej9a.bugs<-bugs(data,inits,parameters,model.file="Ej9a.txt",
+                n.iter=50000,n.chains=1,n.burnin=5000)
+
+#JAGS
+ej9a.jags <-jags(data,inits,parameters,model.file="Ej9a.txt",
+                n.iter=50000,n.chains=1,n.burnin=5000)
+```
+
+```{bash}
+cat Ej9a.txt
+```
+
+
+```{r}
+dicMCMC(ej9a.bugs)
+dicMCMC(ej9a.jags)
+```
+
+```{r}
+graficar_MCMC <- function(modelo, variable_monitorear="theta"){
+  #OpenBUGS
+  outa<-modelo$sims.list
+  z<-outa[(grep(variable_monitorear, names(outa)))] %>%unlist
+  # print(z)
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+}
+graficar_MCMC(ej9a.bugs)
+```
+
+## Modelo B 
+
+$$
+Y_i | \theta_i \sim Poisson(\theta_i P_i), \theta_i \sim Gamma(0.001, 0.001)
+$$
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=leucemia$Obs,"ne"=leucemia$Pops/10000)
+#-Defining inits-
+inits<-function(){list(theta=rep(1,n),yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("theta","yf1")
+#-Running code-
+ej9b.bugs<-bugs(data,inits,parameters,model.file="Ej9b.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000)
+#JAGS
+ej9b.jags<-jags(data,inits,parameters,model.file="Ej9b.txt",
+                n.iter=50000,n.chains=1,n.burnin=5000)
+```
+
+```{bash}
+cat Ej9b.txt
+```
+
+```{r}
+dicMCMC(ej9b.bugs)
+dicMCMC(ej9b.jags)
+```
+
+```{r}
+graficar_MCMC(ej9b.bugs)
+```
+
+```{r}
+resumen_MCMC <- function(modelo,desplegar_variable="theta"){
+  #Resumen (estimadores)
+  outa.sum<-modelo$summary
+
+  #Tabla resumen
+  outa<-modelo$sims.list
+  out<-outa
+  out.sum<-outa.sum
+  out.sum.t<-out.sum[grep(desplegar_variable,rownames(out.sum)),c(1,3,7)]
+  require(magrittr)
+  if(!is.null(out$theta %>% dim)) {
+    # print(out$theta %>% dim)
+    out.sum.t<-cbind(out.sum.t,apply(out$theta,2,prob))
+    dimnames(out.sum.t)[[2]][4]<-"prob"
+    print(out.sum.t)
+  } else {
+    # out.sum.t<-cbind(out.sum.t,apply(out$theta,prob))
+    print(out.sum.t)
+  }
+}
+resumen_MCMC(ej9b.bugs)
+```
+
+```{r}
+graficar_MCMC2 <- function(modelo){
+  outa.sum<-modelo$summary
+  outa<-modelo$sims.list
+  #Estimaciones
+  outa.p<-outa.sum[grep("theta",rownames(outa.sum)),]
+  #x vs. y
+  xmin<-0
+  xmax<-10
+  ymin<-0
+  ymax<-5
+  par(mfrow=c(1,1))
+  plot(leucemia$Obs/leucemia$Pops*10000,type="p",col="grey50",xlim=c(xmin,xmax),ylim=c(ymin,ymax))
+  #
+  out.p<-outa.p
+  points(out.p[,1],col=2,pch=16,cex=0.5)
+  segments(1:8,out.p[,3],1:8,out.p[,7],col=2)
+  points(xmax-0.2,sum(leucemia$Obs)/sum(leucemia$Pops)*10000)
+  #
+  out.p<-outa.p
+  points(xmax-0.2,out.p[1],col=3,pch=16,cex=0.5)
+  segments(xmax-0.2,out.p[3],xmax-0.2,out.p[7],col=3)
+}
+graficar_MCMC2(ej9b.bugs)
+```
+
+## Modelo C
+
+$$
+Y_i | \theta_i \sim Poisson(\theta_i P_i), \theta_i|\alpha,\beta \sim Gamma(\alpha, \beta),
+\alpha \sim Gamma(1,1), 
+\beta \sim Gamma(0.1,1)
+$$
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=leucemia$Obs,"ne"=leucemia$Pops/10000)
+
+#-Defining inits-
+inits<-function(){list(theta=rep(1,n),a=1,b=1,yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("theta","eta","yf1")
+
+#-Running code-
+ej9c.bugs<-bugs(data,inits,parameters,model.file="Ej9c.txt",
+                n.iter=100000,n.chains=1,n.burnin=10000)
+ej9c.jags<-jags(data,inits,parameters,model.file="Ej9c.txt",
+                n.iter=100000,n.chains=1,n.burnin=10000)
+```
+
+```{bash}
+cat Ej9c.txt
+```
+
+```{r}
+dicMCMC(ej9c.bugs)
+```
+
+```{r}
+dicMCMC(ej9c.jags)
+```
+
+```{r}
+graficar_MCMC(ej9c.bugs)
+```
+
+
+## Modelo D: vars explicativas
+
+
+```{r}
+#-Defining data-
+data<-list("n"=n,"y"=leucemia$Obs,"ne"=leucemia$Pops/10000,"C"=leucemia$Cancer,"P"=leucemia$Place,"A"=leucemia$Age)
+
+#-Defining inits-
+inits<-function(){list(alpha=0,beta=rep(0,2),gama=rep(0,2),delta=rep(0,2),yf1=rep(1,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("alpha.adj","beta.adj","gama.adj","delta.adj","yf1")
+
+#-Running code-
+ej9d.bugs<-bugs(data,inits,parameters,model.file="Ej9d.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000)
+#JAGS
+ej9d.jags<-jags(data,inits,parameters,model.file="Ej9d.txt",
+               n.iter=50000,n.chains=1,n.burnin=5000)
+```
+
+```{bash}
+cat Ej9d.txt
+```
+
+```{r}
+dicMCMC(ej9d.bugs)
+```
+
+```{r}
+dicMCMC(ej9d.jags)
+```
+
+```{r}
+graficar_MCMC(ej9d.bugs, "alpha.adj")
+```
+
+```{r}
+graficar_MCMC(ej9d.bugs, "beta.adj")
+```
+
+```{r}
+graficar_MCMC(ej9d.bugs, "delta.adj")
+```
+
+## Estimadores
+
+```{r}
+resumen_MCMC(ej9d.bugs, ".*")
+```
+
+```{r}
+graficar_MCMC3 <- function(modelo1, modelo2){
+  outa.sum<-modelo1$summary
+  outc.sum<-modelo2$summary
+  outa<-modelo1$sims.list
+  #Estimaciones
+  outa.p<-outa.sum[grep("theta",rownames(outa.sum)),]
+  # outb.p<-outb.sum[grep("theta",rownames(outb.sum)),]
+  outc.p<-outc.sum[grep("theta",rownames(outc.sum)),]
+  outc.eta<-outc.sum[grep("eta",rownames(outc.sum)),]
+  
+  #x vs. y
+  xmin<-0
+  xmax<-10
+  ymin<-0
+  ymax<-5
+  par(mfrow=c(1,1))
+  plot(leucemia$Obs/leucemia$Pops*10000,type="p",col="grey50",xlim=c(xmin,xmax),ylim=c(ymin,ymax))
+  #
+  out.p<-outa.p
+  points(out.p[,1],col=2,pch=16,cex=0.5)
+  segments(1:8,out.p[,3],1:8,out.p[,7],col=2)
+  #
+  out.p<-outc.p
+  points((1:8)+0.2,out.p[,1],col=4,pch=16,cex=0.5)
+  segments((1:8)+0.2,out.p[,3],(1:8)+0.2,out.p[,7],col=4)
+  #
+  points(xmax-0.2,sum(leucemia$Obs)/sum(leucemia$Pops)*10000)
+  #
+  out.p<-outa.p
+  points(xmax-0.2,out.p[1],col=3,pch=16,cex=0.5)
+  segments(xmax-0.2,out.p[3],xmax-0.2,out.p[7],col=3)
+  #
+  out.p<-outc.eta
+  points(xmax,out.p[1],col=4,pch=16,cex=0.5)
+  segments(xmax,out.p[3],xmax,out.p[7],col=4)
+}
+graficar_MCMC3(ej9b.bugs, ej9c.bugs)
+```
+

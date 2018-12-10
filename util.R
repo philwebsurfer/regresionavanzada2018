@@ -53,3 +53,14 @@ dicMCMC <- function(modelo){
   }
   print(modelo$DIC)
 }
+
+#Pseudo R2
+# R2<-(cor(calif$SP,out.yf[,1]))^2
+R2 <- function(x, modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+  print(cor(x, out.yf[,1])^2)
+}

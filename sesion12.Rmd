@@ -1,0 +1,126 @@
+---
+title: "Sesión 2018/11/07"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+source("util.R")
+```
+
+# Ejemplo 6 {.tabset}
+
+## Inicialización
+
+### Datos globales para modelos
+
+```{r}
+#--- Ejemplo 6 ---
+mercado<-read.table("mercado.txt",header=TRUE)
+mercado.ts<-ts(mercado,start=c(1990,1),end=c(1991,52),frequency=52)
+n<-nrow(mercado)
+mercado$Tiempo<-1:n
+
+plot(mercado.ts)
+pairs(mercado)
+cor(mercado)
+```
+
+### Simulares
+
+```{r}
+data<-list("n"=n,"y"=mercado$SHARE,"x1"=mercado$PRICE,"x2"=mercado$OPROM,"x3"=mercado$CPROM)
+inits<-function(){list(alpha=0,beta=rep(0,3),tau=1,yf1=rep(1,n))}
+parameters<-c("alpha","beta","tau","yf1")
+ej8a.bugs<-bugs(data,inits,parameters,model.file="Ej8a.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000)
+ej8a.jags<-bugs(data,inits,parameters,model.file="Ej8a.txt",
+               n.iter=10000,n.chains=2,n.burnin=1000,n.thin = 1)
+```
+
+#### Betas
+
+```{r}
+betasMCMC(ej8a.bugs)
+betasMCMC(ej8a.jags)
+```
+
+
+#### Exploración
+
+```{r}
+exploracionMCMC(ej8a.bugs)
+exploracionMCMC(ej8a.jags)
+```
+
+
+#### Comparativos
+
+
+```{r}
+dicMCMC(ej8a.bugs)
+dicMCMC(ej8a.jags)
+```
+
+```{r}
+R2(ej8a.bugs)
+R2(ej8a.jags)
+```
+
+
+#### Predicciones
+
+```{r}
+#Predictions
+out.sum<-ej8a.bugs$summary
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+y<-data$y
+ymin<-min(y,out.yf[,c(1,3,7)])
+ymax<-max(y,out.yf[,c(1,3,7)])
+#x1 vs. y
+x<-data$x1
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#x2 vs. y
+x<-data$x2
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#x3 vs. y
+x<-data$x3
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+#t vs. y
+x<-mercado$Tiempo
+par(mfrow=c(1,1))
+plot(x,y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(x,out.yf[,3],x,out.yf[,7],col=2)
+par(mfrow=c(1,1))
+plot(x,y,type="l",col="grey50",ylim=c(ymin,ymax))
+lines(x,out.yf[,1],col=2,cex=0.5)
+lines(x,out.yf[,3],col=2,lty=2)
+lines(x,out.yf[,7],col=2,lty=2)
+
+
+
+###
+#betas
+# out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+# plot(out.beta[1:104,1],type="l")
+# plot(out.beta[105:208,1],type="l")
+# plot(out.beta[209:312,1],type="l")
+# 
+# #alpha
+# out.alpha<-out.sum[grep("alpha",rownames(out.sum)),]
+# plot(out.alpha[,1],type="l")
+```
+

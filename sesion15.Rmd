@@ -1,0 +1,612 @@
+---
+title: "Sesión 15"
+output:
+  html_document:
+    df_print: paged
+---
+
+_21/11/2018_
+
+_Jorge III Altamirano Astorga - 175904_
+
+```{r include=FALSE}
+library(R2jags)
+library(R2OpenBUGS)
+source("util.R")
+```
+
+# Ejemplo 7 {.tabset}
+
+## EDA
+
+```{r}
+milk <- read.table("milk.txt",header=TRUE)
+milk$t<-1970:1982
+n<-nrow(milk)
+or<-order(milk$x)
+plot(milk$x[or],milk$y[or],type="l")
+text(milk$x[or],milk$y[or],labels=milk$t[or],cex=0.5,col=2)
+plot(milk$t,milk$y,type="l")
+plot(milk$t,milk$x,type="l")
+```
+
+## Modelo O
+
+```{r}
+#-Defining data-
+m<-2
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x,"t"=milk$t)
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x/max(milk$x),"t"=milk$t/max(milk$t))
+data<-list("n"=n,"m"=m,"y"=scale(milk$y)[1:n],"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+# data<-list("n"=n,"m"=m,"y"=c(scale(milk$y)[1:(n-2)],NA,NA),"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+
+#-Defining inits-
+inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,5),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,yf1=rep(0,n+m))}
+# inits<-function(){list(alpha=rep(0,n+m),beta=rep(0,n+m),tau.y=1,tau.b=1,tau.a=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m),g=0)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n),g=1)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n))}
+# inits<-function(){list(beta=rep(0,n),yf1=rep(0,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf1")
+# parameters<-c("beta","tau.y","tau.b","yf1","g")
+# parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("alpha","beta","tau.y","tau.b","tau.a","yf1")
+# #parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("beta","yf1")
+
+#-Running code-
+#OpenBUGS
+ej7o.bugs<-bugs(data,inits,parameters,model.file="Ej7o.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7b.bugs<-bugs(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7c.bugs<-bugs(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,debug=TRUE)
+# ej7d.bugs<-bugs(data,inits,parameters,model.file="Ej7d.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+#JAGS
+ej7o.jags<-jags(data,inits,parameters,model.file="Ej7o.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7b.jags<-jags(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7c.jags<-jags(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+
+```{r}
+exploracionMCMC <- function(modelo){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  out <- modelo$sims.list
+  z <- out$beta[]
+  par(mfrow=c(2,2))
+  plot(z,type="l")
+  plot(cumsum(z)/(1:length(z)),type="l")
+  hist(z,freq=FALSE)
+  acf(z)
+  par(mfrow=c(2,2))
+}
+exploracionMCMC(ej7o.bugs)
+#-Monitoring chain-
+
+#Traza de la cadena
+# traceplot(ej7o.bugs)
+```
+
+```{r}
+dicMCMC(ej7o.bugs)
+dicMCMC(ej7o.jags)
+```
+
+```{r}
+ej7o.bugs$summary[1:2,]
+```
+
+
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej7o.bugs$summary
+
+#JAGS
+# out.sum<-ej7a.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+# out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+# dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej7o.bugs$DIC
+# out.dic<-ej7a.sim$BUGSoutput$DIC
+print(out.dic)
+
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(data$y,out.yf[,c(1,3,7)])
+ymax<-max(data$y,out.yf[,c(1,3,7)])
+xmin<-min(data$t)
+xmax<-max(data$t+m)
+
+#x vs. y
+par(mfrow=c(1,1))
+plot(data$x,data$y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(data$x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(data$x,out.yf[,3],data$x,out.yf[,7],col=2)
+
+#t vs y
+par(mfrow=c(1,1))
+plot(data$t,data$y,type="b",col="grey80",ylim=c(ymin,ymax),xlim=c(xmin,xmax))
+lines(data$t,out.yf[1:n,1],col=2)
+lines(data$t,out.yf[1:n,3],col=2,lty=2)
+lines(data$t,out.yf[1:n,7],col=2,lty=2)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),1],col=4)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),3],col=4,lty=2)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),7],col=4,lty=2)
+#betas
+# out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+# ymin<-min(out.beta[,c(1,3,7)])
+# ymax<-max(out.beta[,c(1,3,7)])
+# plot(out.beta[,1],type="l",ylim=c(ymin,ymax))
+# lines(out.beta[,3],lty=2)
+# lines(out.beta[,7],lty=2)
+```
+
+```{r}
+
+```
+
+## Modelo A
+
+```{r}
+#-Defining data-
+m<-2
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x,"t"=milk$t)
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x/max(milk$x),"t"=milk$t/max(milk$t))
+data<-list("n"=n,"m"=m,"y"=scale(milk$y)[1:n],"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+# data<-list("n"=n,"m"=m,"y"=c(scale(milk$y)[1:(n-2)],NA,NA),"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+
+#-Defining inits-
+# inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(1,n))}
+inits<-function(){list(beta=rep(0,5),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,yf1=rep(0,n+m))}
+# inits<-function(){list(alpha=rep(0,n+m),beta=rep(0,n+m),tau.y=1,tau.b=1,tau.a=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m),g=0)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n),g=1)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n))}
+# inits<-function(){list(beta=rep(0,n),yf1=rep(0,n))}
+
+#-Selecting parameters to monitor-
+parameters<-c("beta","tau","yf1")
+# parameters<-c("beta","tau.y","tau.b","yf1","g")
+# parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("alpha","beta","tau.y","tau.b","tau.a","yf1")
+# #parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("beta","yf1")
+
+#-Running code-
+#OpenBUGS
+ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7b.bugs<-bugs(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7c.bugs<-bugs(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,debug=TRUE)
+# ej7d.bugs<-bugs(data,inits,parameters,model.file="Ej7d.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+#JAGS
+ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7b.jags<-jags(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7c.jags<-jags(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+exploracionMCMC(ej7a.bugs)
+```
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej7a.bugs$summary
+
+#JAGS
+# out.sum<-ej7a.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+# out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+# dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej7a.bugs$DIC
+# out.dic<-ej7a.sim$BUGSoutput$DIC
+print(out.dic)
+
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(data$y,out.yf[,c(1,3,7)])
+ymax<-max(data$y,out.yf[,c(1,3,7)])
+xmin<-min(data$t)
+xmax<-max(data$t+m)
+
+#x vs. y
+par(mfrow=c(1,1))
+plot(data$x,data$y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(data$x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(data$x,out.yf[,3],data$x,out.yf[,7],col=2)
+
+#t vs y
+par(mfrow=c(1,1))
+plot(data$t,data$y,type="b",col="grey80",ylim=c(ymin,ymax),xlim=c(xmin,xmax))
+lines(data$t,out.yf[1:n,1],col=2)
+lines(data$t,out.yf[1:n,3],col=2,lty=2)
+lines(data$t,out.yf[1:n,7],col=2,lty=2)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),1],col=4)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),3],col=4,lty=2)
+# lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),7],col=4,lty=2)
+#betas
+out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+ymin<-min(out.beta[,c(1,3,7)])
+ymax<-max(out.beta[,c(1,3,7)])
+plot(out.beta[,1],type="l",ylim=c(ymin,ymax))
+lines(out.beta[,3],lty=2)
+lines(out.beta[,7],lty=2)
+```
+
+## Modelo B - Dinámico
+
+```{r}
+#-Defining data-
+m<-2
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x,"t"=milk$t)
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x/max(milk$x),"t"=milk$t/max(milk$t))
+data<-list("n"=n,"m"=m,"y"=scale(milk$y)[1:n],"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+# data<-list("n"=n,"m"=m,"y"=c(scale(milk$y)[1:(n-2)],NA,NA),"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+
+#-Defining inits-
+# inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,5),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,yf1=rep(0,n+m))}
+# inits<-function(){list(alpha=rep(0,n+m),beta=rep(0,n+m),tau.y=1,tau.b=1,tau.a=1,yf1=rep(0,n+m))}
+inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m),g=0)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n),g=1)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n))}
+# inits<-function(){list(beta=rep(0,n),yf1=rep(0,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","tau","yf1")
+parameters<-c("beta","tau.y","tau.b","yf1","g")
+# parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("alpha","beta","tau.y","tau.b","tau.a","yf1")
+# #parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("beta","yf1")
+
+#-Running code-
+#OpenBUGS
+ej7b.bugs<-bugs(data,inits,parameters,model.file="Ej7b.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7c.bugs<-bugs(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,debug=TRUE)
+# ej7d.bugs<-bugs(data,inits,parameters,model.file="Ej7d.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+#JAGS
+ej7b.jags<-jags(data,inits,parameters,model.file="Ej7b.txt",
+              n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7c.jags<-jags(data,inits,parameters,model.file="Ej7c.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+exploracionMCMC(ej7b.bugs)
+```
+
+```{r}
+dicMCMC(ej7b.bugs)
+```
+
+```{r}
+library(loo)
+waic(ej7b.bugs$sims.list$yf1)
+```
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej7b.bugs$summary
+
+#JAGS
+# out.sum<-ej7b.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+# out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+# dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej7b.bugs$DIC
+# out.dic<-ej7b.sim$BUGSoutput$DIC
+print(out.dic)
+
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(data$y,out.yf[,c(1,3,7)])
+ymax<-max(data$y,out.yf[,c(1,3,7)])
+xmin<-min(data$t)
+xmax<-max(data$t+m)
+
+#x vs. y
+par(mfrow=c(1,1))
+plot(data$x,data$y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(data$x,out.yf[1:n,1],col=2,pch=16,cex=0.5)
+segments(data$x,out.yf[1:n,3],data$x,out.yf[,7],col=2)
+
+#t vs y
+par(mfrow=c(1,1))
+plot(data$t,data$y,type="b",col="grey80",ylim=c(ymin,ymax),xlim=c(xmin,xmax))
+lines(data$t,out.yf[1:n,1],col=2)
+lines(data$t,out.yf[1:n,3],col=2,lty=2)
+lines(data$t,out.yf[1:n,7],col=2,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),1],col=4)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),3],col=4,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m),7],col=4,lty=2)
+#betas
+out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+ymin<-min(out.beta[,c(1,3,7)])
+ymax<-max(out.beta[,c(1,3,7)])
+plot(out.beta[,1],type="l",ylim=c(ymin,ymax))
+lines(out.beta[,3],lty=2)
+lines(out.beta[,7],lty=2)
+```
+
+
+## Modelo C - Libro Compton
+
+### Sin escalar 
+
+*Utiliza datos sin escalar*
+
+```{r}
+#-Defining data-
+m<-2
+data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x,"t"=milk$t)
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x/max(milk$x),"t"=milk$t/max(milk$t))
+# data<-list("n"=n,"m"=m,"y"=scale(milk$y)[1:n],"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+# data<-list("n"=n,"m"=m,"y"=c(scale(milk$y)[1:(n-2)],NA,NA),"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+
+#-Defining inits-
+# inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,5),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,yf1=rep(0,n+m))}
+# inits<-function(){list(alpha=rep(0,n+m),beta=rep(0,n+m),tau.y=1,tau.b=1,tau.a=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m),g=0)}
+inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n),g=1)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n))}
+# inits<-function(){list(beta=rep(0,n),yf1=rep(0,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","tau","yf1")
+parameters<-c("beta","tau.y","tau.b","yf1","g")
+# parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("alpha","beta","tau.y","tau.b","tau.a","yf1")
+# #parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("beta","yf1")
+
+#-Running code-
+#OpenBUGS
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7b.bugs<-bugs(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+ej7c.bugs<-bugs(data,inits,parameters,model.file="Ej7c.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7d.bugs<-bugs(data,inits,parameters,model.file="Ej7d.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+#JAGS
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7b.jags<-jags(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+ej7c.jags<-jags(data,inits,parameters,model.file="Ej7c.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+exploracionMCMC(ej7c.bugs)
+```
+
+```{r}
+dicMCMC(ej7c.bugs)
+```
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej7c.bugs$summary
+
+#JAGS
+# out.sum<-ej7a.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+# out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+# dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej7c.bugs$DIC
+# out.dic<-ej7a.sim$BUGSoutput$DIC
+print(out.dic)
+
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(data$y,out.yf[,c(1,3,7)])
+ymax<-max(data$y,out.yf[,c(1,3,7)])
+xmin<-min(data$t)
+xmax<-max(data$t+m)
+
+#x vs. y
+par(mfrow=c(1,1))
+plot(data$x,data$y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(data$x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(data$x,out.yf[,3],data$x,out.yf[,7],col=2)
+
+#t vs y
+par(mfrow=c(1,1))
+plot(data$t,data$y,type="b",col="grey80",ylim=c(ymin,ymax),xlim=c(xmin,xmax))
+lines(data$t,out.yf[1:n,1],col=2)
+lines(data$t,out.yf[1:n,3],col=2,lty=2)
+lines(data$t,out.yf[1:n,7],col=2,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4,lty=2)
+#betas
+out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+ymin<-min(out.beta[,c(1,3,7)])
+ymax<-max(out.beta[,c(1,3,7)])
+plot(out.beta[,1],type="l",ylim=c(ymin,ymax))
+lines(out.beta[,3],lty=2)
+lines(out.beta[,7],lty=2)
+```
+
+### Escalados
+
+*Pésima predicción*
+
+```{r}
+#-Defining data-
+m<-2
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x,"t"=milk$t)
+# data<-list("n"=n,"m"=m,"y"=milk$y,"x"=milk$x/max(milk$x),"t"=milk$t/max(milk$t))
+data<-list("n"=n,"m"=m,"y"=scale(milk$y)[1:n],"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+# data<-list("n"=n,"m"=m,"y"=c(scale(milk$y)[1:(n-2)],NA,NA),"x"=scale(milk$x)[1:n],"t"=scale(milk$t)[1:n])
+
+#-Defining inits-
+# inits<-function(){list(alpha=0,beta=0,tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,5),tau=1,yf1=rep(1,n))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,yf1=rep(0,n+m))}
+# inits<-function(){list(alpha=rep(0,n+m),beta=rep(0,n+m),tau.y=1,tau.b=1,tau.a=1,yf1=rep(0,n+m))}
+# inits<-function(){list(beta=rep(0,n+m),tau.y=1,tau.b=1,yf1=rep(0,n+m),g=0)}
+inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n),g=1)}
+# inits<-function(){list(beta=rep(0,n),tau.y=1,tau.b=1,yf1=rep(0,n))}
+# inits<-function(){list(beta=rep(0,n),yf1=rep(0,n))}
+
+#-Selecting parameters to monitor-
+# parameters<-c("beta","tau","yf1")
+parameters<-c("beta","tau.y","tau.b","yf1","g")
+# parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("alpha","beta","tau.y","tau.b","tau.a","yf1")
+# #parameters<-c("beta","tau.y","tau.b","yf1")
+# parameters<-c("beta","yf1")
+
+#-Running code-
+#OpenBUGS
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7a.bugs<-bugs(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7b.bugs<-bugs(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+ej7c.bugs<-bugs(data,inits,parameters,model.file="Ej7c.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000)
+# ej7d.bugs<-bugs(data,inits,parameters,model.file="Ej7d.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000)
+#JAGS
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7a.jags<-jags(data,inits,parameters,model.file="Ej7a.txt",
+#               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+# ej7b.jags<-jags(data,inits,parameters,model.file="Ej7b.txt",
+#                n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+ej7c.jags<-jags(data,inits,parameters,model.file="Ej7c.txt",
+               n.iter=50000,n.chains=2,n.burnin=5000,n.thin=1)
+```
+
+```{r}
+exploracionMCMC(ej7c.bugs)
+```
+
+```{r}
+dicMCMC(ej7c.bugs)
+```
+
+```{r}
+#Resumen (estimadores)
+#OpenBUGS
+out.sum<-ej7c.bugs$summary
+
+#JAGS
+# out.sum<-ej7a.sim$BUGSoutput$summary
+
+#Tabla resumen
+out.sum.t<-out.sum[grep("beta",rownames(out.sum)),c(1,3,7)]
+# out.sum.t<-cbind(out.sum.t,apply(out$beta,2,prob))
+# dimnames(out.sum.t)[[2]][4]<-"prob"
+print(out.sum.t)
+
+#DIC
+out.dic<-ej7c.bugs$DIC
+# out.dic<-ej7a.sim$BUGSoutput$DIC
+print(out.dic)
+
+#Predictions
+out.yf<-out.sum[grep("yf1",rownames(out.sum)),]
+ymin<-min(data$y,out.yf[,c(1,3,7)])
+ymax<-max(data$y,out.yf[,c(1,3,7)])
+xmin<-min(data$t)
+xmax<-max(data$t+m)
+
+#x vs. y
+par(mfrow=c(1,1))
+plot(data$x,data$y,type="p",col="grey50",ylim=c(ymin,ymax))
+points(data$x,out.yf[,1],col=2,pch=16,cex=0.5)
+segments(data$x,out.yf[,3],data$x,out.yf[,7],col=2)
+
+#t vs y
+par(mfrow=c(1,1))
+plot(data$t,data$y,type="b",col="grey80",ylim=c(ymin,ymax),xlim=c(xmin,xmax))
+lines(data$t,out.yf[1:n,1],col=2)
+lines(data$t,out.yf[1:n,3],col=2,lty=2)
+lines(data$t,out.yf[1:n,7],col=2,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4,lty=2)
+lines(data$t[n]:(data$t[n]+m),out.yf[n:(n+m)],col=4,lty=2)
+#betas
+out.beta<-out.sum[grep("beta",rownames(out.sum)),]
+ymin<-min(out.beta[,c(1,3,7)])
+ymax<-max(out.beta[,c(1,3,7)])
+plot(out.beta[,1],type="l",ylim=c(ymin,ymax))
+lines(out.beta[,3],lty=2)
+lines(out.beta[,7],lty=2)
+```
+
+
