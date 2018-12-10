@@ -3,7 +3,7 @@ model{
   for(i in 1:n){
     y[i] ~ dpois(mu[i])
     mu[i] <- theta[i]*ne[i]
-    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i] +
+    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] +
       delta[i,1]*s1[i] +  delta[i,2]*s2[i] +  delta[i,3]*s3[i] +  delta[i,4]*s4[i] +  delta[i,5]*s5[i] +  delta[i,6]*s6[i] + 
       delta[i,7]*s7[i] +  delta[i,8]*s8[i] +  delta[i,9]*s9[i] +  delta[i,10]*s10[i] +  delta[i,11]*s11[i] +  delta[i,12]*s12[i] + 
       delta[i,13]*s13[i] +  delta[i,14]*s14[i] +  delta[i,15]*s15[i] +  delta[i,16]*s16[i] +  delta[i,17]*s17[i] +  delta[i,18]*s18[i] + 
@@ -44,7 +44,7 @@ model{
   for(i in 1:n){
     yf[i] ~ dpois(muf[i])
     muf[i] <- thetaf[i]*ne[i]
-    cloglog(thetaf[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i] +
+    cloglog(thetaf[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*t[i] +
       delta[i,1]*s1[i] +  delta[i,2]*s2[i] +  delta[i,3]*s3[i] +  delta[i,4]*s4[i] +  delta[i,5]*s5[i] +  delta[i,6]*s6[i] + 
       delta[i,7]*s7[i] +  delta[i,8]*s8[i] +  delta[i,9]*s9[i] +  delta[i,10]*s10[i] +  delta[i,11]*s11[i] +  delta[i,12]*s12[i] + 
       delta[i,13]*s13[i] +  delta[i,14]*s14[i] +  delta[i,15]*s15[i] +  delta[i,16]*s16[i] +  delta[i,17]*s17[i] +  delta[i,18]*s18[i] + 

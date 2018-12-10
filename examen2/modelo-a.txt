@@ -3,7 +3,7 @@ model{
   for(i in 1:n){
     y[i] ~ dpois(mu[i])
     mu[i] <- theta[i]*ne[i]
-    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i]
+    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[5]*t[i]
   }
   #Priors
   alpha ~ dnorm(0, 0.001)

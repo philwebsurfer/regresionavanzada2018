@@ -1,0 +1,388 @@
+---
+title: "Examen 2"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+_175904 - Jorge III Altamirano Astorga_
+_Elizabeth Viveros Vergara_
+
+```{r include=FALSE}
+library(tidyverse)
+library(fastDummies)
+library(GGally)
+library(R2jags)
+library(R2OpenBUGS)
+library(mxmaps)
+```
+
+# {.tabset}
+
+## EDA
+
+```{r warning=FALSE}
+seguro <- read_tsv("proyecto.csv", col_types='icnnnndni', na = c('-', 'NA', ''))
+seguro[which(!complete.cases(seguro)), 5] <- 0
+seguro[,c(1,3:6,8)] <- sapply(seguro[,c(1,3:6,8)], as.integer) #convertir a enteros
+summary(seguro)
+```
+
+
+```{r}
+seguro2 <- dummy_cols(seguro, c("Entidad", "Anno"))
+names(seguro2) <- gsub(" ", "_", names(seguro2))
+n <- nrow(seguro2)
+glimpse(seguro2)
+```
+
+```{r}
+print(ggpairs(seguro[,-c(1,2,7)]), progress=F)
+ggsave("0eda.png") %>% invisible
+```
+
+### GEDA 
+
+```{r}
+mxstate_choropleth(seguro %>% 
+                     select(IDEntidad, Y) %>%
+                     mutate(region=IDEntidad, value=Y) %>% 
+                     group_by(region) %>%
+                     summarize(value=mean(Y)),
+                   title="Doble Derechohabiencia\npor Estado", legend = "Doble\nDerechohabiencia")
+ggsave("1derechohabiencia-estados.png")
+```
+
+```{r}
+mxstate_choropleth(seguro %>% 
+                     select(IDEntidad, Desem) %>%
+                     mutate(region=IDEntidad, value=Desem) %>% 
+                     group_by(region) %>%
+                     summarize(value=mean(Desem)),
+                 title="Población Inactiva Económicamente (15 años o más) por Estado", legend = "Población\nEconómicamente\nInactiva")
+ggsave("2poblacioninactiva-estados.png")
+```
+
+
+```{r}
+mxstate_choropleth(seguro %>% 
+                     select(IDEntidad, Y, Desem) %>%
+                     mutate(region=IDEntidad, value=Y/Desem) %>% 
+                     group_by(region) %>%
+                     summarize(value=mean(value)*100),
+                 title="Porcentaje de\nDoble Derechohabientes /\nPoblación Inactiva Económicamente (15 años o más)\n por Estado", 
+                 legend = "Doble Derechohabientes/\nPoblación\nEconómicamente\nInactiva [%]")
+ggsave("3porcentaje-estados.png") 
+```
+
+## a. Modelo Estático
+
+### Modelo Nacional
+
+$$
+Y \sim Poisson(\mu) \\
+\mu = \theta * PoblaciónInactiva \\
+cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR +
+ \beta_4 \cdot PoblaciónPobreza + \beta_5 \cdot Año \\
+\alpha \sim Normal(0,0.001) \\
+\beta \sim Normal(0,0.001)
+$$
+
+```{bash}
+cat modelo-a.txt
+```
+
+
+```{r}
+data<-list("n"=n,"y"=seguro2$Y,
+           "x1"=seguro2$ETU, "x2"=seguro2$ETR, "x3"=seguro2$Pobr, "t"=seguro2$Anno, "ne"=seguro2$Desem)
+inits<-function(){list(alpha=0,beta=rep(0,5),yf=rep(1,n))}
+parameters<-c("alpha","beta","yf")
+modelo.a <-jags(data,inits,parameters,model.file="modelo-a.txt",
+                n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
+```
+
+```{r}
+modelo.a$BUGSoutput$summary[1:6,c(1,3,7)]
+```
+
+```{r}
+modelo.a$BUGSoutput$DIC
+```
+
+### Modelos Estatales
+
+$$
+Y \sim Poisson(\mu) \\
+\mu = \theta * PoblaciónInactiva \\
+cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \beta_3 \cdot Pobr \\
+ \beta_4 \cdot Año + \delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
+ \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} \\
+\alpha \sim Normal(0,0.001) \\
+\beta \sim Normal(0,0.001)
+$$
+
+```{bash}
+cat modelo-a-estatal.txt
+```
+
+
+```{r}
+data<-list("n"=n,"y"=seguro2$Y,
+           "x1"=seguro2$ETU, "x2"=seguro2$ETR, "x3"=seguro2$Pobr, "t"=seguro2$Anno, "ne"=seguro2$Desem,
+           "s1" =seguro2$Entidad_AGUASCALIENTES, "s2" =seguro2$Entidad_BAJA_CALIFORNIA, "s3" =seguro2$Entidad_BAJA_CALIFORNIA_SUR,
+           "s4" =seguro2$Entidad_CAMPECHE, "s5" =seguro2$Entidad_COAHUILA, "s6" =seguro2$Entidad_COLIMA, "s7" =seguro2$Entidad_CHIAPAS,
+           "s8" =seguro2$Entidad_CHIHUAHUA, "s9" =seguro2$Entidad_DISTRITO_FEDERAL, "s10" =seguro2$Entidad_DURANGO, "s11" =seguro2$Entidad_GUANAJUATO,
+           "s12" =seguro2$Entidad_GUERRERO, "s13" =seguro2$Entidad_HIDALGO, "s14" =seguro2$Entidad_JALISCO, "s15" =seguro2$Entidad_MEXICO, 
+           "s16" =seguro2$Entidad_MICHOACAN, "s17" =seguro2$Entidad_MORELOS, "s18" =seguro2$Entidad_NAYARIT, "s19" =seguro2$Entidad_NUEVO_LEON,
+           "s20" =seguro2$Entidad_OAXACA, "s21" =seguro2$Entidad_PUEBLA, "s22" =seguro2$Entidad_QUERETARO, "s23" =seguro2$Entidad_QUINTANA_ROO,
+           "s24" =seguro2$Entidad_SAN_LUIS_POTOSI, "s25" =seguro2$Entidad_SINALOA, "s26" =seguro2$Entidad_SONORA, "s27" =seguro2$Entidad_TABASCO,
+           "s28" =seguro2$Entidad_TAMAULIPAS, "s29"=seguro2$Entidad_TLAXCALA, s30 =seguro2$Entidad_VERACRUZ, "s31" =seguro2$Entidad_YUCATAN,
+           "s32"=seguro2$Entidad_ZACATECAS)
+inits<-function(){list(alpha=0,beta=rep(0,5),yf=rep(1,n))}
+parameters<-c("alpha","beta","delta.mean","yf")
+modelo.a <-jags.parallel(data,inits,parameters,model.file="modelo-a-estatal.txt",
+                n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
+```
+
+```{r}
+summary <- modelo.a$BUGSoutput$summary
+summary <- summary[grep('(alpha|beta|delta)',rownames(summary)), c(1,3,7)] 
+summary %>% round(., 4)
+```
+
+```{r}
+modelo.a$BUGSoutput$DIC
+```
+
+## b. Modelo Dinámico
+
+```{bash}
+cat modelo-b.txt
+```
+
+$$
+Y \sim Poisson(\mu) \\
+\mu = \theta * PoblaciónInactiva \\
+cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \beta_3 \cdot PoblaciónPobreza + \beta_4 \cdot Año + \\
+\delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
+ \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} + \\
+ + \mu_g \cdot \gamma_{1} \cdot I_{2009} + \mu_g \cdot \gamma_{2} \cdot I_{2010} + ... + \mu_g \cdot \gamma_{10} \cdot I_{2017}  \\
+\alpha \sim Normal(0,0.001) \\
+\beta \sim Normal(0,0.001) \\
+\gamma_t \sim Normal(0,0.001) \\
+g \sim Normal(0, 0.001) \\
+\mu_g \sim g \cdot Normal(\gamma_{t-32}) 
+$$
+
+
+```{r}
+seguro2$Anno %>% as.factor %>% levels
+```
+
+
+```{r}
+data<-list("n"=n,"y"=seguro2$Y,
+           "x1"=seguro2$ETU, "x2"=seguro2$ETR, "x3"=seguro2$Pobr, "t"=seguro2$Anno, "ne"=seguro2$Desem,
+           "s1" =seguro2$Entidad_AGUASCALIENTES, "s2" =seguro2$Entidad_BAJA_CALIFORNIA, "s3" =seguro2$Entidad_BAJA_CALIFORNIA_SUR,
+           "s4" =seguro2$Entidad_CAMPECHE, "s5" =seguro2$Entidad_COAHUILA, "s6" =seguro2$Entidad_COLIMA, "s7" =seguro2$Entidad_CHIAPAS,
+           "s8" =seguro2$Entidad_CHIHUAHUA, "s9" =seguro2$Entidad_DISTRITO_FEDERAL, "s10" =seguro2$Entidad_DURANGO, "s11" =seguro2$Entidad_GUANAJUATO,
+           "s12" =seguro2$Entidad_GUERRERO, "s13" =seguro2$Entidad_HIDALGO, "s14" =seguro2$Entidad_JALISCO, "s15" =seguro2$Entidad_MEXICO, 
+           "s16" =seguro2$Entidad_MICHOACAN, "s17" =seguro2$Entidad_MORELOS, "s18" =seguro2$Entidad_NAYARIT, "s19" =seguro2$Entidad_NUEVO_LEON,
+           "s20" =seguro2$Entidad_OAXACA, "s21" =seguro2$Entidad_PUEBLA, "s22" =seguro2$Entidad_QUERETARO, "s23" =seguro2$Entidad_QUINTANA_ROO,
+           "s24" =seguro2$Entidad_SAN_LUIS_POTOSI, "s25" =seguro2$Entidad_SINALOA, "s26" =seguro2$Entidad_SONORA, "s27" =seguro2$Entidad_TABASCO,
+           "s28" =seguro2$Entidad_TAMAULIPAS, "s29"=seguro2$Entidad_TLAXCALA, s30 =seguro2$Entidad_VERACRUZ, "s31" =seguro2$Entidad_YUCATAN,
+           "s32"=seguro2$Entidad_ZACATECAS, "t1"=seguro2$Anno_2009, "t2"=seguro2$Anno_2010, "t3"=seguro2$Anno_2010, "t4"=seguro2$Anno_2011,
+           "t5"=seguro2$Anno_2012, "t6"=seguro2$Anno_2013, "t7"=seguro2$Anno_2014, "t8"=seguro2$Anno_2015, "t9"=seguro2$Anno_2016,
+           "t10"=seguro2$Anno_2017)
+inits<-function(){list(alpha=0,beta=rep(0,5),yf=rep(1,n))}
+parameters<-c("alpha","beta","delta.mean","gamma.mean","yf")
+modelo.b <-jags.parallel(data,inits,parameters,model.file="modelo-b.txt",
+                n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
+```
+
+```{r}
+summary <- modelo.b$BUGSoutput$summary
+summary <- summary[grep('(alpha|beta|delta|gamma)',rownames(summary)), c(1,3,7)] 
+summary %>% round(., 8)
+```
+
+```{r}
+modelo.b$BUGSoutput$DIC
+```
+
+## Modelo Jerárquico
+
+```{bash}
+cat modelo-c.txt
+```
+
+$$
+Y \sim Poisson(\mu) \\
+\mu = \phi\cdot \{ \theta * PoblaciónInactiva \} \\
+cloglog(\theta) = \alpha + \beta_1 \cdot ETU + \beta_2 \cdot ETR + \\
+ \beta_4 \cdot PoblaciónPobreza + \beta_5 \cdot Año + \delta_1 \cdot I_{Aguascalientes} + \delta_2 \cdot I_{BajaCalifornia} + 
+ \delta_3 \cdot I_{BCS} + ... + \delta_{35} \cdot I_{Zacatecas} + \\
+ + \mu_g \cdot \gamma_{1} \cdot I_{2009} + \mu_g \cdot \gamma_{2} \cdot I_{2010} + ... + \mu_g \cdot \gamma_{10} \cdot I_{2017}  \\
+\alpha \sim Normal(0,0.001) \\
+\beta \sim Normal(0,0.001) \\
+\gamma_t \sim Normal(0,0.001) \\
+g \sim Normal(0, 0.001) \\
+\mu_g \sim g \cdot Normal(\gamma_{t-32}) 
+$$
+
+
+```{r}
+data<-list("n"=n,"y"=(seguro2$Y),
+           "x1"=(seguro2$ETU), "x2"=(seguro2$ETR), "x3"=(seguro2$Pobr), 
+           "ne"=(seguro2$Desem),
+           "s1" =seguro2$Entidad_AGUASCALIENTES, "s2" =seguro2$Entidad_BAJA_CALIFORNIA, "s3" =seguro2$Entidad_BAJA_CALIFORNIA_SUR,
+           "s4" =seguro2$Entidad_CAMPECHE, "s5" =seguro2$Entidad_COAHUILA, "s6" =seguro2$Entidad_COLIMA, "s7" =seguro2$Entidad_CHIAPAS,
+           "s8" =seguro2$Entidad_CHIHUAHUA, "s9" =seguro2$Entidad_DISTRITO_FEDERAL, "s10" =seguro2$Entidad_DURANGO, "s11" =seguro2$Entidad_GUANAJUATO,
+           "s12" =seguro2$Entidad_GUERRERO, "s13" =seguro2$Entidad_HIDALGO, "s14" =seguro2$Entidad_JALISCO, "s15" =seguro2$Entidad_MEXICO, 
+           "s16" =seguro2$Entidad_MICHOACAN, "s17" =seguro2$Entidad_MORELOS, "s18" =seguro2$Entidad_NAYARIT, "s19" =seguro2$Entidad_NUEVO_LEON,
+           "s20" =seguro2$Entidad_OAXACA, "s21" =seguro2$Entidad_PUEBLA, "s22" =seguro2$Entidad_QUERETARO, "s23" =seguro2$Entidad_QUINTANA_ROO,
+           "s24" =seguro2$Entidad_SAN_LUIS_POTOSI, "s25" =seguro2$Entidad_SINALOA, "s26" =seguro2$Entidad_SONORA, "s27" =seguro2$Entidad_TABASCO,
+           "s28" =seguro2$Entidad_TAMAULIPAS, "s29"=seguro2$Entidad_TLAXCALA, s30 =seguro2$Entidad_VERACRUZ, "s31" =seguro2$Entidad_YUCATAN,
+           "s32"=seguro2$Entidad_ZACATECAS, "t1"=seguro2$Anno_2009, "t2"=seguro2$Anno_2010, "t3"=seguro2$Anno_2010, "t4"=seguro2$Anno_2011,
+           "t5"=seguro2$Anno_2012, "t6"=seguro2$Anno_2013, "t7"=seguro2$Anno_2014, "t8"=seguro2$Anno_2015, "t9"=seguro2$Anno_2016,
+           "t10"=seguro2$Anno_2017)
+inits<-function(){list(alpha=0,yf=rep(1,n))}
+parameters<-c("alpha","beta.mean","delta.mean","gamma.mean","yf")
+modelo.c <-jags.parallel(data,inits,parameters,model.file="modelo-c.txt",
+                n.iter=5000,n.chains=2,n.burnin=1000,n.thin=1)
+```
+
+```{r}
+summary <- modelo.c$BUGSoutput$summary
+summary <- summary[grep('(alpha|beta|delta|gamma)',rownames(summary)), c(1,3,7)] 
+summary %>% round(., 8)
+```
+
+```{r}
+modelo.c$BUGSoutput$DIC
+```
+
+## Análisis
+
+```{r}
+summary <- modelo.b$BUGSoutput$summary
+summary <- summary[grep('(delta)',rownames(summary)), c(1)] 
+summary <- summary  %>% data.frame
+summary <- summary %>% mutate(region=1:32)
+names(summary) <- c("value", "region")
+mxstate_choropleth(summary, title = "Mapa por Estados", legend = "Valores delta", num_colors = 7)
+ggsave("deltas-estados.png") %>% invisible
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+graficar <- function(data, modelo, title="", filter_column="x1"){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  data <- data %>% data.frame
+  or <- which(data[grep(filter_column, names(data))]==1)
+  data <- data[or,]
+  #Predictions
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+  # print(y)
+  # print(out.yf[or])
+  x<-data$ne
+  y<-data$y
+  ymin<-min(y,out.yf[or,c(1,3,7)])
+  ymax<-max(y,out.yf[or,c(1,3,7)])
+  par(mfrow=c(1,1))
+  plot(x,y,ylim=c(ymin,ymax),main=title,sub = "Donde x es el Circulante; y es el número de billetes falsos")
+  lines(x,out.yf[or,1],lwd=2,col=2)
+  lines(x,out.yf[or,3],lty=2,col=2)
+  lines(x,out.yf[or,7],lty=2,col=2)
+}
+i <- 3
+lapply(list(
+  c("Año 2010", "t2"),
+  c("Año 2011", "t3"),
+  c("Año 2012", "t4"),
+  c("Año 2013", "t5"),
+  c("Año 2014", "t6"),
+  c("Año 2015", "t7"),
+  c("Año 2016", "t8"),
+  c("Año 2017", "t9")
+), function(x){
+  assign("i", i+1)
+  graficar(data, modelo.b, x[1], x[2])
+  print(i)
+  ggsave(paste0(i,"por-anno.png"))
+}) %>% invisible
+# lapply(list(
+#   c("Billete de $20", "t1"),
+#   c("Billete de $50", "t2"),
+#   c("Billete de $100", "t3"),
+#   c("Billete de $200", "t4"),
+#   c("Billete de $500", "t5")
+# ), function(x){
+#   graficar(data, modelo.b, x[1], x[2])
+# }) %>% invisible
+```
+
+```{r}
+graficar <- function(data, modelo, title="", filter_column="x1"){
+  if("BUGSoutput" %in% names(modelo)){
+    modelo <- modelo$BUGSoutput
+  }
+  data <- data %>% data.frame
+  or <- which(data[grep(filter_column, names(data))]==1)
+  
+  # data <- data[or,]
+  #Predictions
+  out.sum<-modelo$summary
+  out.yf<-out.sum[grep("yf",rownames(out.sum)),]
+  # print(y)
+  # print(out.yf[or])
+  x<-data$ne
+  y<-data$y
+  # print(out.sum)
+  # print(length(y))
+  # print(length(out.yf))
+  # print(or)
+  ymin<-min(y,out.yf[,c(1,3,7)])
+  ymax<-max(y,out.yf[,c(1,3,7)])
+  # print(ymax)
+  par(mfrow=c(1,1))
+  plot(x,y,ylim=c(ymin,ymax),main=title,sub = "Donde x es el Circulante; y es el número de billetes falsos")
+  # print(out.sum)
+  # print(or)
+  # print(paste(length(x), length(out.yf[,1])))
+  # lines(x,out.yf[,1],lwd=2,col=2)
+  lines(x,out.yf[,3],lty=2,col=2)
+  # lines(x,out.yf[,7],lty=2,col=2)
+}
+graficar(data, modelo.b, "t1", "t1")
+# lapply(list(
+#   c("Billete de $20", "x1"),
+#   c("Billete de $50", "x2"),
+#   c("Billete de $100", "x3"),
+#   c("Billete de $200", "x4"),
+#   c("Billete de $500", "x5")
+# ), function(x){
+#   graficar(bills.data, modelo.a.bugs, x[1], x[2])
+# }) %>% invisible
+```
+
+
+```{r}
+summary <- modelo.c$BUGSoutput$summary
+summary <- summary[grep('(gamma)',rownames(summary)), c(1,3,7)] 
+summary <- summary %>% round(., 8) %>% data.frame
+summary$var <- rownames(summary)
+summary <- summary %>% select(var, mean)
+rownames(summary) <- NULL
+summary
+#plot
+```
+
+```{r}
+plot(summary)
+```
+

@@ -3,7 +3,7 @@ model{
   for(i in 1:n){
     y[i] ~ dpois(mu[i])
     mu[i] <- theta[i]*ne[i]
-    cloglog(theta[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i] +
+    cloglog(theta[i]) <- alpha + beta[i,1]*x1[i] + beta[i,2]*x2[i] + beta[i,3]*x3[i] + 
       delta[i,1]*s1[i] +  delta[i,2]*s2[i] +  delta[i,3]*s3[i] +  delta[i,4]*s4[i] +  delta[i,5]*s5[i] +  delta[i,6]*s6[i] + 
       delta[i,7]*s7[i] +  delta[i,8]*s8[i] +  delta[i,9]*s9[i] +  delta[i,10]*s10[i] +  delta[i,11]*s11[i] +  delta[i,12]*s12[i] + 
       delta[i,13]*s13[i] +  delta[i,14]*s14[i] +  delta[i,15]*s15[i] +  delta[i,16]*s16[i] +  delta[i,17]*s17[i] +  delta[i,18]*s18[i] + 
@@ -16,10 +16,27 @@ model{
   #Priors
   alpha ~ dnorm(0, 0.001)
   #State eq.
+  for(i in 33:n){
+    for(j in 1:5){
+      beta[i,j] ~ dnorm(beta[(i-32),j], tau.b[j])
+    }
+  }
+	for(i in 1:32){
+    for(k in 1:5){
+      beta[i,k] ~ dnorm(0, 0.001)
+    }
+  }
+  for(j in 1:5){
+    tau.b[j] <- lambda*tau
+  }
+  tau ~ dgamma(0.001,0.001)
+  lambda <- 10
+  for(j in 1:n){
+    for(k in 1:32){
+      delta[j,k] ~ dnorm(0, 0.001)
+    }
+  }
   g ~ dnorm(0, 0.001)
-  #for(k in 1:10){
-  #  gamma[1,k] ~ dnorm(0,0.001)
-  #}
   for(i in 1:32){
     mu.g[i] <- 1
     for(k in 1:10){
@@ -32,19 +49,11 @@ model{
       gamma[i,k] ~ dnorm(0, 0.001)
     }
 	}
-  for(j in 1:5){
-    beta[j] ~ dnorm(0, 0.001)
-  }
-  for(j in 1:n){
-    for(k in 1:32){
-      delta[j,k] ~ dnorm(0, 0.001)
-    }
-  }
   #Predictions
   for(i in 1:n){
     yf[i] ~ dpois(muf[i])
     muf[i] <- thetaf[i]*ne[i]
-    cloglog(thetaf[i]) <- alpha + beta[1]*x1[i] + beta[2]*x2[i] + beta[3]*x3[i] + beta[4]*x4[i] + beta[5]*t[i] +
+    cloglog(thetaf[i]) <- alpha + beta[i,1]*x1[i] + beta[i,2]*x2[i] + beta[i,3]*x3[i] + 
       delta[i,1]*s1[i] +  delta[i,2]*s2[i] +  delta[i,3]*s3[i] +  delta[i,4]*s4[i] +  delta[i,5]*s5[i] +  delta[i,6]*s6[i] + 
       delta[i,7]*s7[i] +  delta[i,8]*s8[i] +  delta[i,9]*s9[i] +  delta[i,10]*s10[i] +  delta[i,11]*s11[i] +  delta[i,12]*s12[i] + 
       delta[i,13]*s13[i] +  delta[i,14]*s14[i] +  delta[i,15]*s15[i] +  delta[i,16]*s16[i] +  delta[i,17]*s17[i] +  delta[i,18]*s18[i] + 
@@ -53,6 +62,10 @@ model{
       delta[i,31]*s31[i] +  delta[i,32]*s32[i] + mu.g[i]*gamma[i,1]*t1[i] + mu.g[i]*gamma[i,2]*t2[i] + mu.g[i]*gamma[i,3]*t3[i] + 
       mu.g[i]*gamma[i,4]*t4[i] + mu.g[i]*gamma[i,5]*t5[i] + mu.g[i]*gamma[i,6]*t6[i] + mu.g[i]*gamma[i,7]*t7[i] + mu.g[i]*gamma[i,8]*t8[i] + 
       mu.g[i]*gamma[i,9]*t9[i] + mu.g[i]*gamma[i,10]*t10[i]
+  }
+  #betas
+  for(k in 1:5){
+    beta.mean[k] <- mean(beta[,k])
   }
   #deltas
   for(k in 1:32){
