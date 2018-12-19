@@ -1,0 +1,83 @@
+---
+title: "Poblaciones Totales Estatales"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(jsonlite)
+library(stringr)
+library(tidyverse)
+```
+
+# {.tabset}
+
+## Obtención de datos
+
+```{r}
+poblacion <- data.frame()
+if(file.exists("poblacion.rds")){
+  print("Tomaremos los datos de información guardada.")
+  poblacion <- readRDS("poblacion.rds")
+}else{
+  print("Descargaremos los datos del INEGI, dado que no hay información guardada.")
+  api <- read_file("inegi-api.txt")
+  sapply(seq(1,32), function(x){
+    url <- sprintf("https://www.inegi.org.mx/app/api/indicadores/desarrolladores/jsonxml/INDICATOR/1002000001/es/%05d/false/BISE/2.0/%s?type=json", 
+                   x*1000, api)
+    estado <- fromJSON(url)$Series$OBSERVATIONS %>% data.frame %>% filter(TIME_PERIOD >= 1990)
+    # print(estado)
+    poblacion_ <- data.frame(entidad=rep(x,nrow(estado)),
+                             anno=estado$TIME_PERIOD,
+                             poblacion=estado$OBS_VALUE %>% as.integer)
+    poblacion <- get("poblacion", .GlobalEnv)
+    assign("poblacion", poblacion %>% rbind(poblacion_), .GlobalEnv)
+    # print(poblacion_)
+    NULL
+  }) %>% invisible
+  saveRDS(poblacion, file="poblacion.rds")
+}
+poblacion
+```
+
+## EDA 
+
+```{r}
+
+```
+
+
+```{r}
+ggplot(poblacion %>% group_by(anno) %>% summarise(total = sum(poblacion)),
+       aes(x=anno, y=total)) +
+  scale_y_continuous(labels = scales::comma) +
+  geom_point()
+```
+
+```{r}
+ggplot(poblacion %>% filter(entidad <= 12),
+       aes(x=anno, y=poblacion)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  geom_point() +
+  facet_wrap( ~ entidad, ncol = 4)
+```
+
+```{r}
+ggplot(poblacion %>% filter(entidad > 12 & entidad <= 24),
+       aes(x=anno, y=poblacion)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  geom_point() +
+  facet_wrap( ~ entidad, ncol = 4)
+```
+```{r}
+ggplot(poblacion %>% filter(entidad > 24),
+       aes(x=anno, y=poblacion)) +
+  scale_y_continuous(labels = scales::comma) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  geom_point() +
+  facet_wrap( ~ entidad, ncol = 4)
+```
+
